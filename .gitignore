@@ -1,0 +1,32 @@
+# Webots runtime and generated files
+controllers/**/build/
+controllers/**/Makefile.include
+*.wbproj
+*.wbt~
+*.proto~
+webots-output.txt
+
+# Python caches, environments, and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

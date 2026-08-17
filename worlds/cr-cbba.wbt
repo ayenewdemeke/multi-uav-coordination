@@ -1,0 +1,1908 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/RoughConcrete.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/WoodenBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/CardboardBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/pipes/protos/PipeSection.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/traffic/protos/TrafficCone.proto"
+EXTERNPROTO "../protos/RedBricks.proto"
+EXTERNPROTO "../protos/Mavic2Pro.proto"
+EXTERNPROTO "../protos/WoodenPalletStack.proto"
+
+WorldInfo {
+  info [
+    "Two-storey concrete frame under construction, four Mavic 2 Pro UAVs and one charging dock."
+    "Scene for persistent multi-UAV construction-site monitoring (IROS construction robotics workshop)."
+  ]
+  title "Construction-site persistent multi-UAV monitoring"
+  basicTimeStep 8
+  defaultDamping Damping {
+    linear 0.5
+    angular 0.5
+  }
+}
+Viewpoint {
+  orientation -0.5773502691896258 0.5773502691896258 0.5773502691896258 2.0944
+  position 9.087513704623137e-06 9.087539464357479e-06 89.62634238629269
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+  castShadows FALSE
+}
+Floor {
+  name "ground"
+  size 60 60
+  appearance PBRAppearance {
+    baseColor 0 0 0
+    roughness 1
+    metalness 0
+  }
+}
+Solid {
+  translation 0 0 0.1
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.899 0.859 0.87
+        textureTransform TextureTransform {
+          rotation 3.953
+          scale 1.263 1.089
+          translation 0.643 0.778
+        }
+      }
+      geometry DEF GROUND_SLAB Box {
+        size 12.4 8.4 0.2
+      }
+    }
+  ]
+  name "ground slab"
+  boundingObject USE GROUND_SLAB
+}
+Solid {
+  translation -6 -4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.817 0.81 0.798
+        textureTransform TextureTransform {
+          rotation 0.107
+          scale 1.206 1.431
+          translation 0.16 0.448
+        }
+      }
+      geometry DEF COLUMN Box {
+        size 0.4 0.4 3
+      }
+    }
+  ]
+  name "column L1 A1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -6 0 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.849 0.838 0.839
+        textureTransform TextureTransform {
+          rotation 5.109
+          scale 1.579 1.207
+          translation 0.64 0.052
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 A2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -6 4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.95 0.994 0.969
+        textureTransform TextureTransform {
+          rotation 0.319
+          scale 1.409 1.787
+          translation 0.01 0.613
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 A3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 -4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.966 0.967 0.996
+        textureTransform TextureTransform {
+          rotation 0.244
+          scale 1.538 1.491
+          translation 0.939 0.531
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 B1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 0 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.916 0.966 0.932
+        textureTransform TextureTransform {
+          rotation 4.797
+          scale 1.739 1.056
+          translation 0.274 0.308
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 B2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.935 0.943 0.949
+        textureTransform TextureTransform {
+          rotation 5.337
+          scale 1.558 1.22
+          translation 0.746 0.265
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 B3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 -4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.92 0.922 0.947
+        textureTransform TextureTransform {
+          rotation 2.642
+          scale 1.613 1.743
+          translation 0.534 0.893
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 C1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 0 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.739 0.765 0.742
+        textureTransform TextureTransform {
+          rotation 4.774
+          scale 1.887 1.159
+          translation 0.747 0.19
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 C2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.856 0.866 0.851
+        textureTransform TextureTransform {
+          rotation 0.208
+          scale 1.112 1.593
+          translation 0.518 0.541
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 C3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 -4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.994 1 0.947
+        textureTransform TextureTransform {
+          rotation 3.913
+          scale 1.552 1.47
+          translation 0.512 0.076
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 D1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 0 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.823 0.811 0.839
+        textureTransform TextureTransform {
+          rotation 0.7
+          scale 1.88 1.037
+          translation 0.134 0.618
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 D2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 4 1.7
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.874 0.854 0.877
+        textureTransform TextureTransform {
+          rotation 2.576
+          scale 1.077 1.6
+          translation 0.096 0.336
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L1 D3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 0 0 3.325
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.899 0.859 0.87
+        textureTransform TextureTransform {
+          rotation 2.241
+          scale 1.45 1.259
+          translation 0.519 0.367
+        }
+      }
+      geometry DEF L1_SLAB Box {
+        size 12.4 8.4 0.25
+      }
+    }
+  ]
+  name "level-1 slab"
+  boundingObject USE L1_SLAB
+}
+Solid {
+  translation -6 -4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.986 0.987 0.952
+        textureTransform TextureTransform {
+          rotation 3.496
+          scale 1.3 1.606
+          translation 0.844 0.969
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 A1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -6 0 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.965 0.964 0.973
+        textureTransform TextureTransform {
+          rotation 4.68
+          scale 1.856 1.318
+          translation 0.419 0.068
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 A2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -6 4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.732 0.731 0.759
+        textureTransform TextureTransform {
+          rotation 2.214
+          scale 1.687 1.125
+          translation 0.062 0.866
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 A3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 -4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.733 0.737 0.725
+        textureTransform TextureTransform {
+          rotation 5.164
+          scale 1.082 1.023
+          translation 0.485 0.086
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 B1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 0 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.847 0.859 0.853
+        textureTransform TextureTransform {
+          rotation 3.61
+          scale 1.051 1.21
+          translation 0.564 0.086
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 B2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -2 4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.884 0.926 0.922
+        textureTransform TextureTransform {
+          rotation 2.231
+          scale 1.787 1.55
+          translation 0.576 0.135
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 B3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 -4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.799 0.779 0.771
+        textureTransform TextureTransform {
+          rotation 2.765
+          scale 1.576 1.582
+          translation 0.847 0.203
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 C1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 0 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.805 0.798 0.789
+        textureTransform TextureTransform {
+          rotation 4.476
+          scale 1.82 1.761
+          translation 0.161 0.343
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 C2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 2 4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.712 0.714 0.731
+        textureTransform TextureTransform {
+          rotation 6.117
+          scale 1.531 1.337
+          translation 0.907 0.532
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 C3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 -4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.885 0.905 0.871
+        textureTransform TextureTransform {
+          rotation 2.517
+          scale 1.176 1.452
+          translation 0.394 0.216
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 D1"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 0 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.79 0.823 0.834
+        textureTransform TextureTransform {
+          rotation 0.426
+          scale 1.082 1.437
+          translation 0.884 0.842
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 D2"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation 6 4 4.95
+  children [
+    Shape {
+      appearance RoughConcrete {
+        colorOverride 0.87 0.874 0.901
+        textureTransform TextureTransform {
+          rotation 2.658
+          scale 1.806 1.018
+          translation 0.738 0.284
+        }
+      }
+      geometry USE COLUMN
+    }
+  ]
+  name "column L2 D3"
+  boundingObject USE COLUMN
+}
+Solid {
+  translation -4 -4 1.7
+  children [
+    Shape {
+      appearance DEF BRICK RedBricks {
+      }
+      geometry DEF WALL_FULL Box {
+        size 3.6 0.2 3
+      }
+    }
+  ]
+  name "infill wall west"
+  boundingObject USE WALL_FULL
+}
+Solid {
+  translation 0 -4 0.8
+  children [
+    Shape {
+      appearance RedBricks {
+        textureTransform TextureTransform {
+          scale 1 0.4
+        }
+      }
+      geometry DEF WALL_HALF Box {
+        size 3.6 0.2 1.2
+      }
+    }
+  ]
+  name "infill wall in progress"
+  boundingObject USE WALL_HALF
+}
+Solid {
+  translation 2.7 -4 1.7
+  children [
+    Shape {
+      appearance DEF BRICK_PIER RedBricks {
+        textureTransform TextureTransform {
+          scale 0.2778 1
+        }
+      }
+      geometry DEF WALL_PIER Box {
+        size 1 0.2 3
+      }
+    }
+  ]
+  name "window wall left pier"
+  boundingObject USE WALL_PIER
+}
+Solid {
+  translation 5.3 -4 1.7
+  children [
+    Shape {
+      appearance USE BRICK_PIER
+      geometry USE WALL_PIER
+    }
+  ]
+  name "window wall right pier"
+  boundingObject USE WALL_PIER
+}
+Solid {
+  translation 4 -4 0.65
+  children [
+    Shape {
+      appearance DEF BRICK_SPANDREL RedBricks {
+        textureTransform TextureTransform {
+          scale 0.4444 0.3
+        }
+      }
+      geometry DEF WALL_SPANDREL Box {
+        size 1.6 0.2 0.9
+      }
+    }
+  ]
+  name "window wall sill"
+  boundingObject USE WALL_SPANDREL
+}
+Solid {
+  translation 4 -4 2.75
+  children [
+    Shape {
+      appearance USE BRICK_SPANDREL
+      geometry USE WALL_SPANDREL
+    }
+  ]
+  name "window wall header"
+  boundingObject USE WALL_SPANDREL
+}
+WoodenPalletStack {
+  translation 10 4 0
+  rotation 0 0 1 0.3
+  name "pallet stack 1"
+}
+WoodenPalletStack {
+  translation 10.6 1.5 0
+  name "pallet stack 2"
+}
+WoodenBox {
+  translation -9 -6 0.3
+  rotation 0 0 1 0.4
+  name "wooden box 1"
+}
+WoodenBox {
+  translation -8.2 -6.4 0.3
+  name "wooden box 2"
+}
+WoodenBox {
+  translation -8.6 -6.2 0.9
+  rotation 0 0 1 0.2
+  name "wooden box 3"
+}
+CardboardBox {
+  translation -9.6 -5.2 0.15
+  rotation 0 0 1 -0.5
+}
+PipeSection {
+  translation -9 6 0.15
+  rotation 0 1 0 1.5708
+  name "pipe 1"
+  height 4
+  radius 0.15
+}
+PipeSection {
+  translation -9 6.34 0.15
+  rotation 0 1 0 1.5708
+  name "pipe 2"
+  height 4
+  radius 0.15
+}
+PipeSection {
+  translation -9 6.17 0.42
+  rotation 0 1 0 1.5708
+  name "pipe 3"
+  height 4
+  radius 0.15
+}
+TrafficCone {
+  translation 0 -8.2 0
+  name "traffic cone 1"
+}
+TrafficCone {
+  translation 2 -8.5 0
+  rotation 0 0 1 0.7
+  name "traffic cone 2"
+}
+TrafficCone {
+  translation 4.5 -9 0
+  rotation 0 0 1 1.9
+  name "traffic cone 3"
+}
+TrafficCone {
+  translation 7 -9.3 0
+  rotation 0 0 1 -0.9
+  name "traffic cone 4"
+}
+DEF DRONE_DOCK Solid {
+  translation 12 -12 0
+  children [
+    Pose {
+      translation 0.55 0.55 0.05
+      children [
+        Shape {
+          appearance DEF DOCK_DARK PBRAppearance {
+            baseColor 0.152 0.16 0.172
+            roughness 0.55
+            metalness 0.3
+          }
+          geometry DEF DOCK_LEG Cylinder {
+            height 0.1
+            radius 0.05
+            subdivision 12
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK
+          geometry USE DOCK_LEG
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK
+          geometry USE DOCK_LEG
+        }
+      ]
+    }
+    Pose {
+      translation 0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK
+          geometry USE DOCK_LEG
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.898 0.906 0.898
+            roughness 0.4
+            metalness 0.25
+          }
+          geometry DEF DOCK_ENCLOSURE Box {
+            size 1.4 1.4 0.4
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.525
+      children [
+        Shape {
+          appearance USE DOCK_DARK
+          geometry DEF DOCK_PLATFORM Box {
+            size 1.4 1.4 0.05
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.556
+      children [
+        Shape {
+          appearance DEF DOCK_MARKING PBRAppearance {
+            baseColor 0.93 0.94 0.94
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.55
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.564
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.184 0.196 0.208
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.42
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING
+          geometry DEF DOCK_H_UPRIGHT Box {
+            size 0.09 0.46 0.008
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING
+          geometry USE DOCK_H_UPRIGHT
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING
+          geometry Box {
+            size 0.21 0.09 0.008
+          }
+        }
+      ]
+    }
+    Charger {
+      translation 0 0 0.55
+      children [
+        Pose {
+          translation 0.58 0.58 0.015
+          children [
+            Shape {
+              appearance DEF DOCK_BEACON PBRAppearance {
+                baseColor 0.85 0.87 0.85
+                roughness 0.35
+                metalness 0
+                emissiveColor 0 1 0
+              }
+              geometry DEF DOCK_BEACON_GEOM Cylinder {
+                height 0.05
+                radius 0.04
+                subdivision 12
+              }
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON
+              geometry USE DOCK_BEACON_GEOM
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON
+              geometry USE DOCK_BEACON_GEOM
+            }
+          ]
+        }
+        Pose {
+          translation 0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON
+              geometry USE DOCK_BEACON_GEOM
+            }
+          ]
+        }
+      ]
+      name "dock charger"
+      battery [
+        50000000, 50000000, 5000
+      ]
+      radius 1
+    }
+  ]
+  name "drone dock"
+  boundingObject Group {
+    children [
+      Pose {
+        translation 0 0 0.3
+        children [
+          USE DOCK_ENCLOSURE
+        ]
+      }
+      Pose {
+        translation 0 0 0.525
+        children [
+          USE DOCK_PLATFORM
+        ]
+      }
+      Pose {
+        translation 0.55 0.55 0.05
+        children [
+          USE DOCK_LEG
+        ]
+      }
+      Pose {
+        translation -0.55 0.55 0.05
+        children [
+          USE DOCK_LEG
+        ]
+      }
+      Pose {
+        translation -0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG
+        ]
+      }
+      Pose {
+        translation 0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG
+        ]
+      }
+    ]
+  }
+}
+DEF DRONE_DOCK_2 Solid {
+  translation 14.4 -12 0
+  children [
+    Pose {
+      translation 0.55 0.55 0.05
+      children [
+        Shape {
+          appearance DEF DOCK_DARK_2 PBRAppearance {
+            baseColor 0.152 0.16 0.172
+            roughness 0.55
+            metalness 0.3
+          }
+          geometry DEF DOCK_LEG_2 Cylinder {
+            height 0.1
+            radius 0.05
+            subdivision 12
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_2
+          geometry USE DOCK_LEG_2
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_2
+          geometry USE DOCK_LEG_2
+        }
+      ]
+    }
+    Pose {
+      translation 0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_2
+          geometry USE DOCK_LEG_2
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.898 0.906 0.898
+            roughness 0.4
+            metalness 0.25
+          }
+          geometry DEF DOCK_ENCLOSURE_2 Box {
+            size 1.4 1.4 0.4
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.525
+      children [
+        Shape {
+          appearance USE DOCK_DARK_2
+          geometry DEF DOCK_PLATFORM_2 Box {
+            size 1.4 1.4 0.05
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.556
+      children [
+        Shape {
+          appearance DEF DOCK_MARKING_2 PBRAppearance {
+            baseColor 0.93 0.94 0.94
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.55
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.564
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.184 0.196 0.208
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.42
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_2
+          geometry DEF DOCK_H_UPRIGHT_2 Box {
+            size 0.09 0.46 0.008
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_2
+          geometry USE DOCK_H_UPRIGHT_2
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_2
+          geometry Box {
+            size 0.21 0.09 0.008
+          }
+        }
+      ]
+    }
+    Charger {
+      translation 0 0 0.55
+      children [
+        Pose {
+          translation 0.58 0.58 0.015
+          children [
+            Shape {
+              appearance DEF DOCK_BEACON_2 PBRAppearance {
+                baseColor 0.85 0.87 0.85
+                roughness 0.35
+                metalness 0
+                emissiveColor 0 1 0
+              }
+              geometry DEF DOCK_BEACON_GEOM_2 Cylinder {
+                height 0.05
+                radius 0.04
+                subdivision 12
+              }
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_2
+              geometry USE DOCK_BEACON_GEOM_2
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_2
+              geometry USE DOCK_BEACON_GEOM_2
+            }
+          ]
+        }
+        Pose {
+          translation 0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_2
+              geometry USE DOCK_BEACON_GEOM_2
+            }
+          ]
+        }
+      ]
+      name "dock charger 2"
+      battery [
+        50000000, 50000000, 5000
+      ]
+      radius 1
+    }
+  ]
+  name "drone dock 2"
+  boundingObject Group {
+    children [
+      Pose {
+        translation 0 0 0.3
+        children [
+          USE DOCK_ENCLOSURE_2
+        ]
+      }
+      Pose {
+        translation 0 0 0.525
+        children [
+          USE DOCK_PLATFORM_2
+        ]
+      }
+      Pose {
+        translation 0.55 0.55 0.05
+        children [
+          USE DOCK_LEG_2
+        ]
+      }
+      Pose {
+        translation -0.55 0.55 0.05
+        children [
+          USE DOCK_LEG_2
+        ]
+      }
+      Pose {
+        translation -0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG_2
+        ]
+      }
+      Pose {
+        translation 0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG_2
+        ]
+      }
+    ]
+  }
+}
+DEF DRONE_DOCK_3 Solid {
+  translation 16.8 -12 0
+  children [
+    Pose {
+      translation 0.55 0.55 0.05
+      children [
+        Shape {
+          appearance DEF DOCK_DARK_3 PBRAppearance {
+            baseColor 0.152 0.16 0.172
+            roughness 0.55
+            metalness 0.3
+          }
+          geometry DEF DOCK_LEG_3 Cylinder {
+            height 0.1
+            radius 0.05
+            subdivision 12
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_3
+          geometry USE DOCK_LEG_3
+        }
+      ]
+    }
+    Pose {
+      translation -0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_3
+          geometry USE DOCK_LEG_3
+        }
+      ]
+    }
+    Pose {
+      translation 0.55 -0.55 0.05
+      children [
+        Shape {
+          appearance USE DOCK_DARK_3
+          geometry USE DOCK_LEG_3
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.898 0.906 0.898
+            roughness 0.4
+            metalness 0.25
+          }
+          geometry DEF DOCK_ENCLOSURE_3 Box {
+            size 1.4 1.4 0.4
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.525
+      children [
+        Shape {
+          appearance USE DOCK_DARK_3
+          geometry DEF DOCK_PLATFORM_3 Box {
+            size 1.4 1.4 0.05
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.556
+      children [
+        Shape {
+          appearance DEF DOCK_MARKING_3 PBRAppearance {
+            baseColor 0.93 0.94 0.94
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.55
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.564
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.184 0.196 0.208
+            roughness 0.7
+            metalness 0
+          }
+          geometry Cylinder {
+            height 0.01
+            radius 0.42
+            subdivision 32
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_3
+          geometry DEF DOCK_H_UPRIGHT_3 Box {
+            size 0.09 0.46 0.008
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0.15 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_3
+          geometry USE DOCK_H_UPRIGHT_3
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.573
+      children [
+        Shape {
+          appearance USE DOCK_MARKING_3
+          geometry Box {
+            size 0.21 0.09 0.008
+          }
+        }
+      ]
+    }
+    Charger {
+      translation 0 0 0.55
+      children [
+        Pose {
+          translation 0.58 0.58 0.015
+          children [
+            Shape {
+              appearance DEF DOCK_BEACON_3 PBRAppearance {
+                baseColor 0.85 0.87 0.85
+                roughness 0.35
+                metalness 0
+                emissiveColor 0 1 0
+              }
+              geometry DEF DOCK_BEACON_GEOM_3 Cylinder {
+                height 0.05
+                radius 0.04
+                subdivision 12
+              }
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_3
+              geometry USE DOCK_BEACON_GEOM_3
+            }
+          ]
+        }
+        Pose {
+          translation -0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_3
+              geometry USE DOCK_BEACON_GEOM_3
+            }
+          ]
+        }
+        Pose {
+          translation 0.58 -0.58 0.015
+          children [
+            Shape {
+              appearance USE DOCK_BEACON_3
+              geometry USE DOCK_BEACON_GEOM_3
+            }
+          ]
+        }
+      ]
+      name "dock charger 3"
+      battery [
+        50000000, 50000000, 5000
+      ]
+      radius 1
+    }
+  ]
+  name "drone dock 3"
+  boundingObject Group {
+    children [
+      Pose {
+        translation 0 0 0.3
+        children [
+          USE DOCK_ENCLOSURE_3
+        ]
+      }
+      Pose {
+        translation 0 0 0.525
+        children [
+          USE DOCK_PLATFORM_3
+        ]
+      }
+      Pose {
+        translation 0.55 0.55 0.05
+        children [
+          USE DOCK_LEG_3
+        ]
+      }
+      Pose {
+        translation -0.55 0.55 0.05
+        children [
+          USE DOCK_LEG_3
+        ]
+      }
+      Pose {
+        translation -0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG_3
+        ]
+      }
+      Pose {
+        translation 0.55 -0.55 0.05
+        children [
+          USE DOCK_LEG_3
+        ]
+      }
+    ]
+  }
+}
+Solid {
+  translation 0 20 1
+  children [
+    Shape {
+      appearance DEF FENCE_MAT PBRAppearance {
+        baseColor 0.62 0.64 0.66
+        transparency 0.55
+        roughness 0.8
+        metalness 0.1
+      }
+      geometry Box {
+        size 44 0.06 2
+      }
+    }
+  ]
+  name "fence north"
+}
+Solid {
+  translation 22 0 1
+  children [
+    Shape {
+      appearance USE FENCE_MAT
+      geometry Box {
+        size 0.06 40 2
+      }
+    }
+  ]
+  name "fence east"
+}
+Solid {
+  translation -22 0 1
+  children [
+    Shape {
+      appearance USE FENCE_MAT
+      geometry Box {
+        size 0.06 40 2
+      }
+    }
+  ]
+  name "fence west"
+}
+Solid {
+  translation -16.5 -20 1
+  children [
+    Shape {
+      appearance USE FENCE_MAT
+      geometry Box {
+        size 11 0.06 2
+      }
+    }
+  ]
+  name "fence south west"
+}
+Solid {
+  translation 8.5 -20 1
+  children [
+    Shape {
+      appearance USE FENCE_MAT
+      geometry Box {
+        size 27 0.06 2
+      }
+    }
+  ]
+  name "fence south east"
+}
+Solid {
+  translation -11 -20 1.25
+  children [
+    Shape {
+      appearance DEF GATE_POST PBRAppearance {
+        baseColor 0.85 0.45 0.1
+        roughness 0.6
+        metalness 0.2
+      }
+      geometry Cylinder {
+        height 2.5
+        radius 0.09
+        subdivision 12
+      }
+    }
+  ]
+  name "gate post 1"
+}
+Solid {
+  translation -5 -20 1.25
+  children [
+    Shape {
+      appearance USE GATE_POST
+      geometry Cylinder {
+        height 2.5
+        radius 0.09
+        subdivision 12
+      }
+    }
+  ]
+  name "gate post 2"
+}
+WoodenPalletStack {
+  translation -15.6 11.4 0
+  rotation 0 0 1 0.15
+  name "yard pallet stack 1"
+}
+WoodenPalletStack {
+  translation -13.4 8.7 0
+  rotation 0 0 1 -0.25
+  name "yard pallet stack 2"
+}
+WoodenBox {
+  translation -16.4 8.6 0.3
+  rotation 0 0 1 0.5
+  name "yard box"
+}
+Solid {
+  translation 12 10 0.525
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.72 0.63 0.47
+        baseColorMap ImageTexture {
+          url [
+            "../protos/textures/sand/sand_base_color.jpg"
+          ]
+        }
+        roughnessMap ImageTexture {
+          url [
+            "../protos/textures/sand/sand_roughness.jpg"
+          ]
+        }
+        normalMap ImageTexture {
+          url [
+            "../protos/textures/sand/sand_normal.jpg"
+          ]
+        }
+        occlusionMap ImageTexture {
+          url [
+            "../protos/textures/sand/sand_occlusion.jpg"
+          ]
+        }
+        metalness 0
+        textureTransform TextureTransform {
+          scale 4 4
+        }
+      }
+      geometry Cone {
+        bottomRadius 1.4
+        height 1.05
+        subdivision 28
+      }
+    }
+  ]
+  name "material quality sand pile"
+}
+DEF TASK_S1 Solid {
+  translation -8 -18 0.01
+  children [
+    Pose {
+      translation 0 1.69 0
+      children [
+        Shape {
+          appearance DEF SAFETY_MARK PBRAppearance {
+            baseColor 0.85 0.11 0.11
+            roughness 0.6
+            metalness 0
+            emissiveColor 0.45 0.03 0.03
+          }
+          geometry Box {
+            size 7 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -1.69 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 7 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 3.44 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 3.26 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -3.44 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 3.26 0.03
+          }
+        }
+      ]
+    }
+  ]
+  name "task area S1"
+}
+DEF TASK_S2 Solid {
+  translation 6.2 0 3.46
+  children [
+    Pose {
+      translation 0 2.94 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 2.5 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -2.94 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 2.5 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 1.19 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 5.76 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -1.19 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 5.76 0.03
+          }
+        }
+      ]
+    }
+  ]
+  name "task area S2"
+}
+DEF TASK_S3 Solid {
+  translation -15 10 0.01
+  children [
+    Pose {
+      translation 0 2.19 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 8 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -2.19 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 8 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 3.94 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 4.26 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -3.94 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box {
+            size 0.12 4.26 0.03
+          }
+        }
+      ]
+    }
+  ]
+  name "task area S3"
+}
+DEF TASK_Q1 Solid {
+  translation -4 -4 3.46
+  children [
+    Pose {
+      translation 0 1.19 0
+      children [
+        Shape {
+          appearance DEF QUALITY_MARK PBRAppearance {
+            baseColor 0.12 0.38 0.85
+            roughness 0.6
+            metalness 0
+            emissiveColor 0.03 0.09 0.45
+          }
+          geometry Box {
+            size 5 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -1.19 0
+      children [
+        Shape {
+          appearance USE QUALITY_MARK
+          geometry Box {
+            size 5 0.12 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 2.44 0 0
+      children [
+        Shape {
+          appearance USE QUALITY_MARK
+          geometry Box {
+            size 0.12 2.26 0.03
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -2.44 0 0
+      children [
+        Shape {
+          appearance USE QUALITY_MARK
+          geometry Box {
+            size 0.12 2.26 0.03
+          }
+        }
+      ]
+    }
+  ]
+  name "task area Q1"
+}
+DEF SAFETY_BOUNDARY Group {
+  children [
+    Pose {
+      translation 0 0.5 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 3 0.12 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -0.5 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 3 0.12 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation 1.44 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 0.12 1 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation -1.44 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 0.12 1 0.03 }
+        }
+      ]
+    }
+  ]
+}
+Solid {
+  translation 0 20 0.01
+  children [ USE SAFETY_BOUNDARY ]
+  name "task area S4 fence north"
+}
+Solid {
+  translation 22 0 0.01
+  rotation 0 0 1 1.5708
+  children [ USE SAFETY_BOUNDARY ]
+  name "task area S5 fence east"
+}
+Solid {
+  translation -22 -4 0.01
+  rotation 0 0 1 1.5708
+  children [ USE SAFETY_BOUNDARY ]
+  name "task area S6 fence west"
+}
+Solid {
+  translation 12 10 0.01
+  children [
+    Pose {
+      translation 0 1.5 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 4 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 0 -1.5 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 4 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 1.94 0 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 0.12 3 0.03 } } ]
+    }
+    Pose {
+      translation -1.94 0 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 0.12 3 0.03 } } ]
+    }
+  ]
+  name "task area Q2 material"
+}
+DEF UAV1 Mavic2Pro {
+  translation 16.8 0 0.07
+  rotation 0 0 1 3.14159
+  name "UAV1"
+  controller "uav_cbba"
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
+DEF UAV2 Mavic2Pro {
+  translation 0 16.8 0.07
+  rotation 0 0 1 -1.5708
+  name "UAV2"
+  controller "uav_cbba"
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
+DEF UAV3 Mavic2Pro {
+  translation -16.8 0 0.07
+  name "UAV3"
+  controller "uav_cbba"
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
+DEF UAV4 Mavic2Pro {
+  translation 0 -16.8 0.07
+  rotation 0 0 1 1.5708
+  name "UAV4"
+  controller "uav_cbba"
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
