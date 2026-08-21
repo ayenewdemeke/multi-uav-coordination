@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Aggregate UAV JSONL logs into paper metrics and plots."""
-import csv, json, math
+import csv, json, math, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TASKS = {"S1": ("Safety", 120), "S2": ("Safety", 150),
-         "S3": ("Safety", 150), "S4": ("Safety", 200),
-         "Q1": ("Quality", 400), "Q2": ("Quality", 400),
-         "Q3": ("Quality", 500), "Q4": ("Quality", 500)}
-MODES, MISSION = ("baseline", "proposed"), 3600
+sys.path.insert(0, str(ROOT / "controllers" / "uav_cbba"))
+from mission_config import MISSION_DURATION_S, TASKS as TASK_DEFINITIONS
+
+TASKS = {task[0]: (task[1], task[5]) for task in TASK_DEFINITIONS}
+MODES, MISSION = ("baseline", "proposed"), MISSION_DURATION_S
 
 
 def load(mode):
@@ -34,7 +34,7 @@ def summarize(mode, rows):
             # rather than merely classifying the entire gap as late once.
             violations[kind] += max(0, math.ceil((current - previous) / revisit) - 1)
             previous = current
-    cycles = [r["convergence_s"] for r in rows if r["event"] == "allocation_cycle"]
+    cycles = [r["convergence_s"] for r in rows if r["event"] == "allocation_converged"]
     ends = [r for r in rows if r["event"] == "mission_end"]
     return {"mode": mode,
             "charger_conflicts": sum(r["event"] == "charger_conflict" for r in rows),
@@ -42,9 +42,10 @@ def summarize(mode, rows):
             "safety_revisit_violations": violations["Safety"],
             "quality_revisit_violations": violations["Quality"],
             "completed_services": sum(map(len, done.values())),
-            "charging_reassignments": sum(r["event"] == "charger_conflict_resolved" for r in rows),
-            "mean_local_allocation_compute_s": round(sum(cycles) / len(cycles), 6) if cycles else 0,
-            "consensus_window_s": 8.0,
+            "charging_reassignments": sum(
+                r.get("released_count", 1)
+                for r in rows if r["event"] == "charger_conflict_resolved"),
+            "mean_allocation_convergence_s": round(sum(cycles) / len(cycles), 6) if cycles else 0,
             "communication_messages": sum(r.get("messages", 0) for r in ends),
             "minimum_soc": round(min((r.get("minimum_soc", 1) for r in ends), default=1), 4)}
 

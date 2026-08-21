@@ -31,4 +31,4 @@ htmlcov/
 Thumbs.db
 desktop.ini
 .mplconfig/
-results/**/UAV*.jsonl
+results/

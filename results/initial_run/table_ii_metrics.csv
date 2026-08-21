@@ -1,3 +1,0 @@
-mode,charger_conflicts,charger_waiting_s,safety_revisit_violations,quality_revisit_violations,completed_services,charging_reassignments,mean_local_allocation_compute_s,consensus_window_s,communication_messages,minimum_soc
-baseline,2,26.184,91,26,16,0,4.4e-05,8.0,99864,0.2119
-proposed,0,0,88,24,23,5,5.2e-05,8.0,98145,0.2239

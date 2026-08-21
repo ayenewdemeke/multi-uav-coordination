@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-printf '%s\n' 3600 > "$project_dir/experiment_duration.txt"
 if [ -n "${WEBOTS_BIN:-}" ]; then
   webots_bin=$WEBOTS_BIN
 elif command -v webots >/dev/null 2>&1; then
