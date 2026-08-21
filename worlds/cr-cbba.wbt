@@ -3,6 +3,7 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/SandyGround.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/RoughConcrete.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/WoodenBox.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/CardboardBox.proto"
@@ -18,7 +19,7 @@ WorldInfo {
     "Scene for persistent multi-UAV construction-site monitoring (IROS construction robotics workshop)."
   ]
   title "Construction-site persistent multi-UAV monitoring"
-  basicTimeStep 8
+  basicTimeStep 32
   defaultDamping Damping {
     linear 0.5
     angular 0.5
@@ -36,10 +37,8 @@ TexturedBackgroundLight {
 Floor {
   name "ground"
   size 60 60
-  appearance PBRAppearance {
-    baseColor 0 0 0
-    roughness 1
-    metalness 0
+  appearance SandyGround {
+    colorOverride 0.78 0.72 0.58
   }
 }
 Solid {
@@ -1517,6 +1516,7 @@ DEF UAV1 Mavic2Pro {
   name "UAV1"
   controller "uav_cbba"
   supervisor TRUE
+  physics NULL
   bodySlot [
     Emitter {
       channel 1
@@ -1540,6 +1540,7 @@ DEF UAV2 Mavic2Pro {
   name "UAV2"
   controller "uav_cbba"
   supervisor TRUE
+  physics NULL
   bodySlot [
     Emitter {
       channel 1
@@ -1562,6 +1563,7 @@ DEF UAV3 Mavic2Pro {
   name "UAV3"
   controller "uav_cbba"
   supervisor TRUE
+  physics NULL
   bodySlot [
     Emitter {
       channel 1
@@ -1585,6 +1587,7 @@ DEF UAV4 Mavic2Pro {
   name "UAV4"
   controller "uav_cbba"
   supervisor TRUE
+  physics NULL
   bodySlot [
     Emitter {
       channel 1

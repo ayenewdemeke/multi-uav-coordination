@@ -18,34 +18,34 @@ def load(mode):
     return sorted(rows, key=lambda r: (r["time"], r["agent"]))
 
 
-def completions(rows):
+def task_events(rows, event):
     result = {task: [] for task in TASKS}
     for row in rows:
-        if row["event"] == "task_complete": result[row["task"]].append(row["time"])
+        if row["event"] == event: result[row["task"]].append(row["time"])
     return result
 
 
 def summarize(mode, rows):
-    done = completions(rows); violations = {"Safety": 0, "Quality": 0}
+    starts = task_events(rows, "task_start")
+    completions = task_events(rows, "task_complete")
+    violations = {"Safety": 0, "Quality": 0}
     for task, (kind, revisit) in TASKS.items():
         previous = 0
-        for current in done[task] + [MISSION]:
-            # Count each prescribed revisit deadline missed within the gap,
-            # rather than merely classifying the entire gap as late once.
+        for current in starts[task] + [MISSION]:
             violations[kind] += max(0, math.ceil((current - previous) / revisit) - 1)
             previous = current
-    cycles = [r["convergence_s"] for r in rows if r["event"] == "allocation_converged"]
+    cycles = [r["rounds"] for r in rows if r["event"] == "allocation_converged"]
     ends = [r for r in rows if r["event"] == "mission_end"]
     return {"mode": mode,
             "charger_conflicts": sum(r["event"] == "charger_conflict" for r in rows),
             "charger_waiting_s": round(sum(r.get("duration_s", 0) for r in rows if r["event"] == "charger_wait_end"), 3),
             "safety_revisit_violations": violations["Safety"],
             "quality_revisit_violations": violations["Quality"],
-            "completed_services": sum(map(len, done.values())),
+            "completed_services": sum(map(len, completions.values())),
             "charging_reassignments": sum(
                 r.get("released_count", 1)
                 for r in rows if r["event"] == "charger_conflict_resolved"),
-            "mean_allocation_convergence_s": round(sum(cycles) / len(cycles), 6) if cycles else 0,
+            "mean_allocation_rounds": round(sum(cycles) / len(cycles), 3) if cycles else 0,
             "communication_messages": sum(r.get("messages", 0) for r in ends),
             "minimum_soc": round(min((r.get("minimum_soc", 1) for r in ends), default=1), 4)}
 
@@ -71,9 +71,11 @@ def plots(data):
     fig.savefig(dest / "fig2_charger_timeline.png", dpi=300); plt.close(fig)
     fig, ax = plt.subplots(figsize=(9, 3.5))
     for mode, style in zip(MODES, ("--", "-")):
-        done = completions(data[mode]); xs = list(range(0, MISSION + 1, 10)); ys = []
+        starts = task_events(data[mode], "task_start")
+        xs = list(range(0, int(MISSION) + 1, 10)); ys = []
         for now in xs:
-            ys.append(sum(now - max((t for t in done[k] if t <= now), default=0) > TASKS[k][1] for k in TASKS))
+            ys.append(sum(now - max((t for t in starts[k] if t <= now),
+                                    default=0) > TASKS[k][1] for k in TASKS))
         ax.step(xs, ys, where="post", label=mode.capitalize(), linestyle=style)
     ax.set(xlabel="Mission time (s)", ylabel="Overdue tasks", ylim=(-.1, 8.3))
     ax.legend(); ax.grid(alpha=.25); fig.tight_layout()

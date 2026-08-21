@@ -19,6 +19,11 @@ PROTO Mavic2Pro [
   field SFBool     supervisor          FALSE                               # Is `Robot.supervisor`.
   field SFBool     synchronization     TRUE                                # Is `Robot.synchronization`.
   field MFFloat    battery             []                                  # Is `Robot.battery`.
+  field SFNode     physics             Physics {
+    density -1
+    mass 0.4
+    centerOfMass [ -0.088 0 -0.04 ]
+  }                                                                         # Is `Solid.physics`.
   field MFNode     bodySlot            []                                  # Extends the robot with new nodes in the turret slot.
   field MFNode     cameraSlot          [ Camera { width 400 height 240 } ] # Extends the robot with a Camera.
 ]
@@ -829,13 +834,7 @@ Robot {
       }
     ]
   }
-  physics Physics {
-    density -1
-    mass 0.4
-    centerOfMass [
-      -0.088 0 -0.04
-    ]
-  }
+  physics IS physics
   controller IS controller
   controllerArgs IS controllerArgs
   window IS window

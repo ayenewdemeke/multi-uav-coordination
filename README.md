@@ -15,28 +15,27 @@ Both treatments use the standard two-phase Consensus-Based Bundle Algorithm:
 2. the timestamp-based CBBA consensus rules of Choi, Brunet, and How (2009),
    including winner/bid vectors and bundle truncation after a lost task.
 
-Bundles contain at most two tasks. Both treatments apply the same task score,
+Bundles may contain up to all eight tasks; route energy, ownership, and timing
+determine their actual length. Both treatments apply the same task score,
 battery-feasibility constraint, 15% reserve, and pre-service energy check.
 
 - `baseline`: standard CBBA plus route-energy feasibility. Charger availability
   is ignored during allocation, so conflicts are resolved by waiting at runtime.
-- `proposed`: the baseline plus exclusive predicted charger intervals. An
-  overlapping interval causes the UAV with more energy margin to truncate its
-  bundle, releasing a task for normal CBBA reassignment.
+- `proposed`: the baseline plus exclusive predicted charger intervals. The UAV
+  with the larger energy margin first searches up to three later slots and
+  truncates its bundle only when none is energy-feasible.
 
-The reservation agreed at convergence remains attached to the route through
-execution: the UAV completes its committed bundle, returns to the charger, and
-uses that interval without recomputing it. Winner, bid, and timestamp vectors
-continue to be exchanged in every flight state, while status messages expose
-active and committed tasks to later allocation cycles. A committed charger
+Task bundles and charger reservations are committed independently. A UAV
+requests a charger only when its predicted post-route energy cannot safely
+support another task and return with the reserve intact. A committed charger
 reservation is non-preemptable until used; tentative bundles remain open to
-normal CBBA competition and can still be outbid before convergence.
+normal CBBA competition.
 
-After a task is completed, its next revisit has a distinct release time and
-deadline. The release lead is derived from its service duration and the longest
-possible inbound site trip, allowing an on-time completion instead of waiting
-until the deadline has already passed. Any holding time before a reserved
-charger interval is included in battery feasibility.
+Revisit deadlines apply to service starts. A task is released 15 s before its
+next start is due, and a start after the due time is a violation. Any holding
+time before a reserved charger interval is included in battery feasibility.
+Battery replenishment occurs at docking, while the charger remains occupied for
+the full 30 s access interval.
 
 All experimental constants and task definitions are in
 `controllers/uav_cbba/mission_config.py`.
