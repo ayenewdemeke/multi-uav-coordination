@@ -20,10 +20,11 @@ determine their actual length. Both treatments apply the same task score,
 battery-feasibility constraint, 15% reserve, and pre-service energy check.
 
 - `baseline`: standard CBBA plus route-energy feasibility. Charger availability
-  is ignored during allocation, so conflicts are resolved by waiting at runtime.
+  is ignored during allocation, so conflicts are resolved by waiting at runtime;
+  a worst-case three-slot energy allowance protects the 15% reserve.
 - `proposed`: the baseline plus exclusive predicted charger intervals. The UAV
-  with the larger energy margin first searches up to three later slots and
-  truncates its bundle only when none is energy-feasible.
+  with the larger energy margin accepts an energy-feasible slot delayed by at
+  most 60 s and truncates its bundle only when none is available.
 
 Task bundles and charger reservations are committed independently. A UAV
 requests a charger only when its predicted post-route energy cannot safely
@@ -32,7 +33,8 @@ reservation is non-preemptable until used; tentative bundles remain open to
 normal CBBA competition.
 
 Revisit deadlines apply to service starts. A task is released 15 s before its
-next start is due, and a start after the due time is a violation. Any holding
+next start is due, and route insertions that would make an achievable deadline
+late are infeasible. A start after the due time is a violation. Any holding
 time before a reserved charger interval is included in battery feasibility.
 Battery replenishment occurs at docking, while the charger remains occupied for
 the full 30 s access interval.

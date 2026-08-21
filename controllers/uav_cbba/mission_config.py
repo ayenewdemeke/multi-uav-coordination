@@ -21,6 +21,7 @@ BATTERY_CAPACITY_J = 213_444.0
 POWER_W = 120.0
 RESERVE_FRACTION = 0.15
 CHARGER_ACCESS_S = 30.0
+MAX_SLOT_DELAY_S = 60.0
 MISSION_DURATION_S = 7200.0
 
 # All UAVs begin a normal deployment with fully charged batteries.

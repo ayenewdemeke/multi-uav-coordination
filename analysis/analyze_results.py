@@ -34,19 +34,12 @@ def summarize(mode, rows):
         for current in starts[task] + [MISSION]:
             violations[kind] += max(0, math.ceil((current - previous) / revisit) - 1)
             previous = current
-    cycles = [r["rounds"] for r in rows if r["event"] == "allocation_converged"]
     ends = [r for r in rows if r["event"] == "mission_end"]
     return {"mode": mode,
             "charger_conflicts": sum(r["event"] == "charger_conflict" for r in rows),
             "charger_waiting_s": round(sum(r.get("duration_s", 0) for r in rows if r["event"] == "charger_wait_end"), 3),
-            "safety_revisit_violations": violations["Safety"],
-            "quality_revisit_violations": violations["Quality"],
+            "revisit_violations": sum(violations.values()),
             "completed_services": sum(map(len, completions.values())),
-            "charging_reassignments": sum(
-                r.get("released_count", 1)
-                for r in rows if r["event"] == "charger_conflict_resolved"),
-            "mean_allocation_rounds": round(sum(cycles) / len(cycles), 3) if cycles else 0,
-            "communication_messages": sum(r.get("messages", 0) for r in ends),
             "minimum_soc": round(min((r.get("minimum_soc", 1) for r in ends), default=1), 4)}
 
 
