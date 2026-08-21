@@ -631,22 +631,22 @@ CardboardBox {
   rotation 0 0 1 -0.5
 }
 PipeSection {
-  translation -9 6 0.15
-  rotation 0 1 0 1.5708
+  translation 20 -7 0.15
+  rotation 1 0 0 1.5708
   name "pipe 1"
   height 4
   radius 0.15
 }
 PipeSection {
-  translation -9 6.34 0.15
-  rotation 0 1 0 1.5708
+  translation 20.34 -7 0.15
+  rotation 1 0 0 1.5708
   name "pipe 2"
   height 4
   radius 0.15
 }
 PipeSection {
-  translation -9 6.17 0.42
-  rotation 0 1 0 1.5708
+  translation 20.17 -7 0.42
+  rotation 1 0 0 1.5708
   name "pipe 3"
   height 4
   radius 0.15
@@ -906,478 +906,6 @@ DEF DRONE_DOCK Solid {
     ]
   }
 }
-DEF DRONE_DOCK_2 Solid {
-  translation 14.4 -12 0
-  children [
-    Pose {
-      translation 0.55 0.55 0.05
-      children [
-        Shape {
-          appearance DEF DOCK_DARK_2 PBRAppearance {
-            baseColor 0.152 0.16 0.172
-            roughness 0.55
-            metalness 0.3
-          }
-          geometry DEF DOCK_LEG_2 Cylinder {
-            height 0.1
-            radius 0.05
-            subdivision 12
-          }
-        }
-      ]
-    }
-    Pose {
-      translation -0.55 0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_2
-          geometry USE DOCK_LEG_2
-        }
-      ]
-    }
-    Pose {
-      translation -0.55 -0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_2
-          geometry USE DOCK_LEG_2
-        }
-      ]
-    }
-    Pose {
-      translation 0.55 -0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_2
-          geometry USE DOCK_LEG_2
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.3
-      children [
-        Shape {
-          appearance PBRAppearance {
-            baseColor 0.898 0.906 0.898
-            roughness 0.4
-            metalness 0.25
-          }
-          geometry DEF DOCK_ENCLOSURE_2 Box {
-            size 1.4 1.4 0.4
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.525
-      children [
-        Shape {
-          appearance USE DOCK_DARK_2
-          geometry DEF DOCK_PLATFORM_2 Box {
-            size 1.4 1.4 0.05
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.556
-      children [
-        Shape {
-          appearance DEF DOCK_MARKING_2 PBRAppearance {
-            baseColor 0.93 0.94 0.94
-            roughness 0.7
-            metalness 0
-          }
-          geometry Cylinder {
-            height 0.01
-            radius 0.55
-            subdivision 32
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.564
-      children [
-        Shape {
-          appearance PBRAppearance {
-            baseColor 0.184 0.196 0.208
-            roughness 0.7
-            metalness 0
-          }
-          geometry Cylinder {
-            height 0.01
-            radius 0.42
-            subdivision 32
-          }
-        }
-      ]
-    }
-    Pose {
-      translation -0.15 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_2
-          geometry DEF DOCK_H_UPRIGHT_2 Box {
-            size 0.09 0.46 0.008
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0.15 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_2
-          geometry USE DOCK_H_UPRIGHT_2
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_2
-          geometry Box {
-            size 0.21 0.09 0.008
-          }
-        }
-      ]
-    }
-    Charger {
-      translation 0 0 0.55
-      children [
-        Pose {
-          translation 0.58 0.58 0.015
-          children [
-            Shape {
-              appearance DEF DOCK_BEACON_2 PBRAppearance {
-                baseColor 0.85 0.87 0.85
-                roughness 0.35
-                metalness 0
-                emissiveColor 0 1 0
-              }
-              geometry DEF DOCK_BEACON_GEOM_2 Cylinder {
-                height 0.05
-                radius 0.04
-                subdivision 12
-              }
-            }
-          ]
-        }
-        Pose {
-          translation -0.58 0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_2
-              geometry USE DOCK_BEACON_GEOM_2
-            }
-          ]
-        }
-        Pose {
-          translation -0.58 -0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_2
-              geometry USE DOCK_BEACON_GEOM_2
-            }
-          ]
-        }
-        Pose {
-          translation 0.58 -0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_2
-              geometry USE DOCK_BEACON_GEOM_2
-            }
-          ]
-        }
-      ]
-      name "dock charger 2"
-      battery [
-        50000000, 50000000, 5000
-      ]
-      radius 1
-    }
-  ]
-  name "drone dock 2"
-  boundingObject Group {
-    children [
-      Pose {
-        translation 0 0 0.3
-        children [
-          USE DOCK_ENCLOSURE_2
-        ]
-      }
-      Pose {
-        translation 0 0 0.525
-        children [
-          USE DOCK_PLATFORM_2
-        ]
-      }
-      Pose {
-        translation 0.55 0.55 0.05
-        children [
-          USE DOCK_LEG_2
-        ]
-      }
-      Pose {
-        translation -0.55 0.55 0.05
-        children [
-          USE DOCK_LEG_2
-        ]
-      }
-      Pose {
-        translation -0.55 -0.55 0.05
-        children [
-          USE DOCK_LEG_2
-        ]
-      }
-      Pose {
-        translation 0.55 -0.55 0.05
-        children [
-          USE DOCK_LEG_2
-        ]
-      }
-    ]
-  }
-}
-DEF DRONE_DOCK_3 Solid {
-  translation 16.8 -12 0
-  children [
-    Pose {
-      translation 0.55 0.55 0.05
-      children [
-        Shape {
-          appearance DEF DOCK_DARK_3 PBRAppearance {
-            baseColor 0.152 0.16 0.172
-            roughness 0.55
-            metalness 0.3
-          }
-          geometry DEF DOCK_LEG_3 Cylinder {
-            height 0.1
-            radius 0.05
-            subdivision 12
-          }
-        }
-      ]
-    }
-    Pose {
-      translation -0.55 0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_3
-          geometry USE DOCK_LEG_3
-        }
-      ]
-    }
-    Pose {
-      translation -0.55 -0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_3
-          geometry USE DOCK_LEG_3
-        }
-      ]
-    }
-    Pose {
-      translation 0.55 -0.55 0.05
-      children [
-        Shape {
-          appearance USE DOCK_DARK_3
-          geometry USE DOCK_LEG_3
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.3
-      children [
-        Shape {
-          appearance PBRAppearance {
-            baseColor 0.898 0.906 0.898
-            roughness 0.4
-            metalness 0.25
-          }
-          geometry DEF DOCK_ENCLOSURE_3 Box {
-            size 1.4 1.4 0.4
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.525
-      children [
-        Shape {
-          appearance USE DOCK_DARK_3
-          geometry DEF DOCK_PLATFORM_3 Box {
-            size 1.4 1.4 0.05
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.556
-      children [
-        Shape {
-          appearance DEF DOCK_MARKING_3 PBRAppearance {
-            baseColor 0.93 0.94 0.94
-            roughness 0.7
-            metalness 0
-          }
-          geometry Cylinder {
-            height 0.01
-            radius 0.55
-            subdivision 32
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.564
-      children [
-        Shape {
-          appearance PBRAppearance {
-            baseColor 0.184 0.196 0.208
-            roughness 0.7
-            metalness 0
-          }
-          geometry Cylinder {
-            height 0.01
-            radius 0.42
-            subdivision 32
-          }
-        }
-      ]
-    }
-    Pose {
-      translation -0.15 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_3
-          geometry DEF DOCK_H_UPRIGHT_3 Box {
-            size 0.09 0.46 0.008
-          }
-        }
-      ]
-    }
-    Pose {
-      translation 0.15 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_3
-          geometry USE DOCK_H_UPRIGHT_3
-        }
-      ]
-    }
-    Pose {
-      translation 0 0 0.573
-      children [
-        Shape {
-          appearance USE DOCK_MARKING_3
-          geometry Box {
-            size 0.21 0.09 0.008
-          }
-        }
-      ]
-    }
-    Charger {
-      translation 0 0 0.55
-      children [
-        Pose {
-          translation 0.58 0.58 0.015
-          children [
-            Shape {
-              appearance DEF DOCK_BEACON_3 PBRAppearance {
-                baseColor 0.85 0.87 0.85
-                roughness 0.35
-                metalness 0
-                emissiveColor 0 1 0
-              }
-              geometry DEF DOCK_BEACON_GEOM_3 Cylinder {
-                height 0.05
-                radius 0.04
-                subdivision 12
-              }
-            }
-          ]
-        }
-        Pose {
-          translation -0.58 0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_3
-              geometry USE DOCK_BEACON_GEOM_3
-            }
-          ]
-        }
-        Pose {
-          translation -0.58 -0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_3
-              geometry USE DOCK_BEACON_GEOM_3
-            }
-          ]
-        }
-        Pose {
-          translation 0.58 -0.58 0.015
-          children [
-            Shape {
-              appearance USE DOCK_BEACON_3
-              geometry USE DOCK_BEACON_GEOM_3
-            }
-          ]
-        }
-      ]
-      name "dock charger 3"
-      battery [
-        50000000, 50000000, 5000
-      ]
-      radius 1
-    }
-  ]
-  name "drone dock 3"
-  boundingObject Group {
-    children [
-      Pose {
-        translation 0 0 0.3
-        children [
-          USE DOCK_ENCLOSURE_3
-        ]
-      }
-      Pose {
-        translation 0 0 0.525
-        children [
-          USE DOCK_PLATFORM_3
-        ]
-      }
-      Pose {
-        translation 0.55 0.55 0.05
-        children [
-          USE DOCK_LEG_3
-        ]
-      }
-      Pose {
-        translation -0.55 0.55 0.05
-        children [
-          USE DOCK_LEG_3
-        ]
-      }
-      Pose {
-        translation -0.55 -0.55 0.05
-        children [
-          USE DOCK_LEG_3
-        ]
-      }
-      Pose {
-        translation 0.55 -0.55 0.05
-        children [
-          USE DOCK_LEG_3
-        ]
-      }
-    ]
-  }
-}
 Solid {
   translation 0 20 1
   children [
@@ -1491,7 +1019,7 @@ WoodenBox {
   name "yard box"
 }
 Solid {
-  translation 12 10 0.525
+  translation 8 11 0.525
   children [
     Shape {
       appearance PBRAppearance {
@@ -1529,6 +1057,90 @@ Solid {
     }
   ]
   name "material quality sand pile"
+}
+Solid {
+  translation 17 17 0
+  rotation 0 0 1 -0.55
+  children [
+    Pose {
+      translation 0 0 0.3
+      children [
+        Shape {
+          appearance DEF EQUIPMENT_DARK PBRAppearance {
+            baseColor 0.08 0.08 0.07
+            roughness 0.75
+            metalness 0.15
+          }
+          geometry Box { size 2.6 1.55 0.35 }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 0.72
+      children [
+        Shape {
+          appearance DEF EQUIPMENT_YELLOW PBRAppearance {
+            baseColor 0.95 0.55 0.04
+            roughness 0.5
+            metalness 0.1
+          }
+          geometry Box { size 2.05 1.35 0.55 }
+        }
+      ]
+    }
+    Pose {
+      translation -0.25 0 1.3
+      children [
+        Shape {
+          appearance USE EQUIPMENT_YELLOW
+          geometry Box { size 1.15 1.2 0.85 }
+        }
+      ]
+    }
+    Pose {
+      translation -0.27 -0.61 1.32
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.08 0.14 0.17
+            transparency 0.15
+            roughness 0.25
+            metalness 0
+          }
+          geometry Box { size 0.75 0.03 0.55 }
+        }
+      ]
+    }
+    Pose {
+      translation 1.3 0 1.15
+      rotation 0 1 0 -0.35
+      children [
+        Shape {
+          appearance USE EQUIPMENT_YELLOW
+          geometry Box { size 1.7 0.28 0.3 }
+        }
+      ]
+    }
+    Pose {
+      translation 2.05 0 0.72
+      rotation 0 1 0 0.45
+      children [
+        Shape {
+          appearance USE EQUIPMENT_YELLOW
+          geometry Box { size 0.85 0.8 0.45 }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0.86 0.32
+      children [ Shape { appearance USE EQUIPMENT_DARK geometry Box { size 2.75 0.3 0.42 } } ]
+    }
+    Pose {
+      translation 0 -0.86 0.32
+      children [ Shape { appearance USE EQUIPMENT_DARK geometry Box { size 2.75 0.3 0.42 } } ]
+    }
+  ]
+  name "compact excavator"
 }
 DEF TASK_S1 Solid {
   translation -8 -18 0.01
@@ -1585,14 +1197,19 @@ DEF TASK_S1 Solid {
   ]
   name "task area S1"
 }
-DEF TASK_S2 Solid {
+DEF TASK_Q2 Solid {
   translation 6.2 0 3.46
   children [
     Pose {
       translation 0 2.94 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance DEF QUALITY_MARK PBRAppearance {
+            baseColor 0.12 0.38 0.85
+            roughness 0.6
+            metalness 0
+            emissiveColor 0.03 0.09 0.45
+          }
           geometry Box {
             size 2.5 0.12 0.03
           }
@@ -1603,7 +1220,7 @@ DEF TASK_S2 Solid {
       translation 0 -2.94 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box {
             size 2.5 0.12 0.03
           }
@@ -1614,7 +1231,7 @@ DEF TASK_S2 Solid {
       translation 1.19 0 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box {
             size 0.12 5.76 0.03
           }
@@ -1625,7 +1242,7 @@ DEF TASK_S2 Solid {
       translation -1.19 0 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box {
             size 0.12 5.76 0.03
           }
@@ -1633,9 +1250,9 @@ DEF TASK_S2 Solid {
       ]
     }
   ]
-  name "task area S2"
+  name "task area Q2 building east"
 }
-DEF TASK_S3 Solid {
+DEF TASK_S2 Solid {
   translation -15 10 0.01
   children [
     Pose {
@@ -1683,7 +1300,7 @@ DEF TASK_S3 Solid {
       ]
     }
   ]
-  name "task area S3"
+  name "task area S2 laydown yard"
 }
 DEF TASK_Q1 Solid {
   translation -4 -4 3.46
@@ -1692,12 +1309,7 @@ DEF TASK_Q1 Solid {
       translation 0 1.19 0
       children [
         Shape {
-          appearance DEF QUALITY_MARK PBRAppearance {
-            baseColor 0.12 0.38 0.85
-            roughness 0.6
-            metalness 0
-            emissiveColor 0.03 0.09 0.45
-          }
+          appearance USE QUALITY_MARK
           geometry Box {
             size 5 0.12 0.03
           }
@@ -1743,10 +1355,50 @@ DEF TASK_Q1 Solid {
 DEF SAFETY_BOUNDARY Group {
   children [
     Pose {
-      translation 0 0.5 0
+      translation 0 1 0
       children [
         Shape {
           appearance USE SAFETY_MARK
+          geometry Box { size 4.2 0.12 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation 0 -1 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 4.2 0.12 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation 2.04 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 0.12 2 0.03 }
+        }
+      ]
+    }
+    Pose {
+      translation -2.04 0 0
+      children [
+        Shape {
+          appearance USE SAFETY_MARK
+          geometry Box { size 0.12 2 0.03 }
+        }
+      ]
+    }
+  ]
+}
+DEF QUALITY_BOUNDARY Group {
+  children [
+    Pose {
+      translation 0 0.5 0
+      children [
+        Shape {
+          appearance USE QUALITY_MARK
           geometry Box { size 3 0.12 0.03 }
         }
       ]
@@ -1755,7 +1407,7 @@ DEF SAFETY_BOUNDARY Group {
       translation 0 -0.5 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box { size 3 0.12 0.03 }
         }
       ]
@@ -1764,7 +1416,7 @@ DEF SAFETY_BOUNDARY Group {
       translation 1.44 0 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box { size 0.12 1 0.03 }
         }
       ]
@@ -1773,32 +1425,72 @@ DEF SAFETY_BOUNDARY Group {
       translation -1.44 0 0
       children [
         Shape {
-          appearance USE SAFETY_MARK
+          appearance USE QUALITY_MARK
           geometry Box { size 0.12 1 0.03 }
         }
       ]
     }
   ]
 }
-Solid {
-  translation 0 20 0.01
-  children [ USE SAFETY_BOUNDARY ]
-  name "task area S4 fence north"
+DEF EQUIPMENT_SAFETY_BOUNDARY Group {
+  children [
+    Pose {
+      translation 0 2 0
+      children [ Shape { appearance USE SAFETY_MARK geometry Box { size 6 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 0 -2 0
+      children [ Shape { appearance USE SAFETY_MARK geometry Box { size 6 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 2.94 0 0
+      children [ Shape { appearance USE SAFETY_MARK geometry Box { size 0.12 4 0.03 } } ]
+    }
+    Pose {
+      translation -2.94 0 0
+      children [ Shape { appearance USE SAFETY_MARK geometry Box { size 0.12 4 0.03 } } ]
+    }
+  ]
+}
+DEF PIPE_QUALITY_BOUNDARY Group {
+  children [
+    Pose {
+      translation 0 2.5 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 2 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 0 -2.5 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 2 0.12 0.03 } } ]
+    }
+    Pose {
+      translation 0.94 0 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 0.12 5 0.03 } } ]
+    }
+    Pose {
+      translation -0.94 0 0
+      children [ Shape { appearance USE QUALITY_MARK geometry Box { size 0.12 5 0.03 } } ]
+    }
+  ]
 }
 Solid {
-  translation 22 0 0.01
-  rotation 0 0 1 1.5708
-  children [ USE SAFETY_BOUNDARY ]
-  name "task area S5 fence east"
+  translation 17 17 0.01
+  rotation 0 0 1 -0.55
+  children [ USE EQUIPMENT_SAFETY_BOUNDARY ]
+  name "task area S3 equipment safety"
+}
+Solid {
+  translation 20 -7 0.01
+  children [ USE PIPE_QUALITY_BOUNDARY ]
+  name "task area Q3 pipe quality"
 }
 Solid {
   translation -22 -4 0.01
   rotation 0 0 1 1.5708
   children [ USE SAFETY_BOUNDARY ]
-  name "task area S6 fence west"
+  name "task area S4 fence west"
 }
 Solid {
-  translation 12 10 0.01
+  translation 8 11 0.01
   children [
     Pose {
       translation 0 1.5 0
@@ -1817,7 +1509,7 @@ Solid {
       children [ Shape { appearance USE QUALITY_MARK geometry Box { size 0.12 3 0.03 } } ]
     }
   ]
-  name "task area Q2 material"
+  name "task area Q4 material quality"
 }
 DEF UAV1 Mavic2Pro {
   translation 16.8 0 0.07
@@ -1905,4 +1597,9 @@ DEF UAV4 Mavic2Pro {
       near 0.2
     }
   ]
+}
+Robot {
+  name "experiment supervisor"
+  controller "experiment_supervisor"
+  supervisor TRUE
 }
