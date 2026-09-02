@@ -12,6 +12,9 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "../protos/RedBricks.proto"
 EXTERNPROTO "../protos/Mavic2Pro.proto"
 EXTERNPROTO "../protos/WoodenPalletStack.proto"
+EXTERNPROTO "../protos/ColumnStarterBars.proto"
+EXTERNPROTO "../protos/UpperSlabWithStairOpening.proto"
+EXTERNPROTO "../protos/ConcreteStairFlight.proto"
 
 WorldInfo {
   info [
@@ -38,11 +41,11 @@ Floor {
   name "ground"
   size 60 60
   appearance SandyGround {
-    colorOverride 0.78 0.72 0.58
+    colorOverride 0.9 0.86 0.76
   }
 }
 Solid {
-  translation 0 0 0.1
+  translation -0.5 0 0.1
   children [
     Shape {
       appearance RoughConcrete {
@@ -54,7 +57,7 @@ Solid {
         }
       }
       geometry DEF GROUND_SLAB Box {
-        size 12.4 8.4 0.2
+        size 11.4 8.4 0.2
       }
     }
   ]
@@ -172,7 +175,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 -4 1.7
+  translation 1 -4 1.7
   children [
     Shape {
       appearance RoughConcrete {
@@ -190,7 +193,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 0 1.7
+  translation 1 0 1.7
   children [
     Shape {
       appearance RoughConcrete {
@@ -208,7 +211,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 4 1.7
+  translation 1 4 1.7
   children [
     Shape {
       appearance RoughConcrete {
@@ -226,11 +229,11 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 -4 1.7
+  translation 5 -4 1.7
   children [
     Shape {
       appearance RoughConcrete {
-        colorOverride 0.994 1 0.947
+        colorOverride 0.994 1.0 0.947
         textureTransform TextureTransform {
           rotation 3.913
           scale 1.552 1.47
@@ -244,7 +247,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 0 1.7
+  translation 5 0 1.7
   children [
     Shape {
       appearance RoughConcrete {
@@ -262,7 +265,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 4 1.7
+  translation 5 4 1.7
   children [
     Shape {
       appearance RoughConcrete {
@@ -279,25 +282,12 @@ Solid {
   name "column L1 D3"
   boundingObject USE COLUMN
 }
-Solid {
-  translation 0 0 3.325
-  children [
-    Shape {
-      appearance RoughConcrete {
-        colorOverride 0.899 0.859 0.87
-        textureTransform TextureTransform {
-          rotation 2.241
-          scale 1.45 1.259
-          translation 0.519 0.367
-        }
-      }
-      geometry DEF L1_SLAB Box {
-        size 12.4 8.4 0.25
-      }
-    }
-  ]
-  name "level-1 slab"
-  boundingObject USE L1_SLAB
+UpperSlabWithStairOpening {
+  translation -0.5 0 3.325
+  name "level-1 slab with stair opening"
+}
+ConcreteStairFlight {
+  translation -0.5 0 0
 }
 Solid {
   translation -6 -4 4.95
@@ -408,7 +398,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 -4 4.95
+  translation 1 -4 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -426,7 +416,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 0 4.95
+  translation 1 0 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -444,7 +434,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 2 4 4.95
+  translation 1 4 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -462,7 +452,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 -4 4.95
+  translation 5 -4 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -480,7 +470,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 0 4.95
+  translation 5 0 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -498,7 +488,7 @@ Solid {
   boundingObject USE COLUMN
 }
 Solid {
-  translation 6 4 4.95
+  translation 5 4 4.95
   children [
     Shape {
       appearance RoughConcrete {
@@ -515,6 +505,19 @@ Solid {
   name "column L2 D3"
   boundingObject USE COLUMN
 }
+# Four 1.0 m starter bars at each level-2 column; 0.8 m remains exposed.
+ColumnStarterBars { translation -6 -4 0 name "rebar L2 A1" }
+ColumnStarterBars { translation -6 0 0 name "rebar L2 A2" }
+ColumnStarterBars { translation -6 4 0 name "rebar L2 A3" }
+ColumnStarterBars { translation -2 -4 0 name "rebar L2 B1" }
+ColumnStarterBars { translation -2 0 0 name "rebar L2 B2" }
+ColumnStarterBars { translation -2 4 0 name "rebar L2 B3" }
+ColumnStarterBars { translation 1 -4 0 name "rebar L2 C1" }
+ColumnStarterBars { translation 1 0 0 name "rebar L2 C2" }
+ColumnStarterBars { translation 1 4 0 name "rebar L2 C3" }
+ColumnStarterBars { translation 5 -4 0 name "rebar L2 D1" }
+ColumnStarterBars { translation 5 0 0 name "rebar L2 D2" }
+ColumnStarterBars { translation 5 4 0 name "rebar L2 D3" }
 Solid {
   translation -4 -4 1.7
   children [
@@ -530,24 +533,7 @@ Solid {
   boundingObject USE WALL_FULL
 }
 Solid {
-  translation 0 -4 0.8
-  children [
-    Shape {
-      appearance RedBricks {
-        textureTransform TextureTransform {
-          scale 1 0.4
-        }
-      }
-      geometry DEF WALL_HALF Box {
-        size 3.6 0.2 1.2
-      }
-    }
-  ]
-  name "infill wall in progress"
-  boundingObject USE WALL_HALF
-}
-Solid {
-  translation 2.7 -4 1.7
+  translation 1.7 -4 1.7
   children [
     Shape {
       appearance DEF BRICK_PIER RedBricks {
@@ -564,7 +550,7 @@ Solid {
   boundingObject USE WALL_PIER
 }
 Solid {
-  translation 5.3 -4 1.7
+  translation 4.3 -4 1.7
   children [
     Shape {
       appearance USE BRICK_PIER
@@ -575,7 +561,7 @@ Solid {
   boundingObject USE WALL_PIER
 }
 Solid {
-  translation 4 -4 0.65
+  translation 3 -4 0.65
   children [
     Shape {
       appearance DEF BRICK_SPANDREL RedBricks {
@@ -592,7 +578,7 @@ Solid {
   boundingObject USE WALL_SPANDREL
 }
 Solid {
-  translation 4 -4 2.75
+  translation 3 -4 2.75
   children [
     Shape {
       appearance USE BRICK_SPANDREL
@@ -601,6 +587,46 @@ Solid {
   ]
   name "window wall header"
   boundingObject USE WALL_SPANDREL
+}
+Solid {
+  translation -4 4 1.7
+  children [
+    Shape {
+      appearance RedBricks {
+      }
+      geometry DEF WALL_FULL_N Box {
+        size 3.6 0.2 3
+      }
+    }
+  ]
+  name "north wall west"
+  boundingObject USE WALL_FULL_N
+}
+Solid {
+  translation -0.5 4 1.7
+  children [
+    Shape {
+      appearance RedBricks {
+      }
+      geometry DEF WALL_MID_N Box {
+        size 2.6 0.2 3
+      }
+    }
+  ]
+  name "north wall middle"
+  boundingObject USE WALL_MID_N
+}
+Solid {
+  translation 3 4 1.7
+  children [
+    Shape {
+      appearance RedBricks {
+      }
+      geometry USE WALL_FULL_N
+    }
+  ]
+  name "north wall east"
+  boundingObject USE WALL_FULL_N
 }
 WoodenPalletStack {
   translation 10 4 0

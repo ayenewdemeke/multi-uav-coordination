@@ -118,9 +118,7 @@ def route_metrics(position, candidate_path, now):
         point = task[2:4]
     elapsed += distance(point, CHARGER) / CRUISE_SPEED
     arrival = now + elapsed
-    contingency = ((len(AGENTS) - 1) * CHARGER_ACCESS_S
-                   if mode == "baseline" else 0.0)
-    required_energy = (POWER_W * (elapsed + contingency) +
+    required_energy = (POWER_W * elapsed +
                        RESERVE_FRACTION * BATTERY_CAPACITY_J)
     return score, required_energy, arrival, (arrival, arrival + CHARGER_ACCESS_S)
 
@@ -143,8 +141,7 @@ def route_end(position, candidate_path):
 
 
 def can_service_another(position, available_energy):
-    contingency = ((len(AGENTS) - 1) * CHARGER_ACCESS_S
-                   if mode == "baseline" else MAX_SLOT_DELAY_S)
+    contingency = MAX_SLOT_DELAY_S if mode == "proposed" else 0.0
     reserve = (RESERVE_FRACTION * BATTERY_CAPACITY_J +
                POWER_W * contingency)
     return any(POWER_W * (distance(position, task[2:4]) / CRUISE_SPEED +

@@ -1,0 +1,39 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/RoughConcrete.proto"
+
+PROTO ConcreteStairFlight [
+  field SFVec3f translation -0.5 0 0
+  field SFString name "concrete stair flight (dog-leg)"
+] {
+  Solid {
+    translation IS translation
+    children [
+      # Dog-leg: two 1.2 m flights (waist slab + treads) and a mid-landing.
+    Pose { translation -0.7 1.65 0.8725 rotation 1 0 0 0.5764 children [ Shape { appearance DEF STAIR_C RoughConcrete { colorOverride 0.72 0.70 0.68 } geometry Box { size 1.2 2.9817 0.2 } } ] }
+    Pose { translation 0.7 1.55 2.4975 rotation 1 0 0 -0.5418 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 3.1513 0.2 } } ] }
+    Pose { translation 0 3.3 1.725 children [ Shape { appearance USE STAIR_C geometry Box { size 2.6 0.8 0.2 } } ] }
+    Pose { translation -0.7 0.5250 0.3375 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 0.7750 0.5000 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 1.0250 0.6625 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 1.2750 0.8250 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 1.5250 0.9875 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 1.7750 1.1500 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 2.0250 1.3125 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 2.2750 1.4750 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 2.5250 1.6375 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation -0.7 2.7750 1.8000 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2500 0.05 } } ] }
+    Pose { translation 0.7 2.7650 1.9625 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 2.4950 2.1250 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 2.2250 2.2875 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 1.9550 2.4500 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 1.6850 2.6125 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 1.4150 2.7750 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 1.1450 2.9375 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 0.8750 3.1000 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 0.6050 3.2625 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    Pose { translation 0.7 0.3350 3.4250 children [ Shape { appearance USE STAIR_C geometry Box { size 1.2 0.2700 0.05 } } ] }
+    ]
+    name IS name
+  }
+}
