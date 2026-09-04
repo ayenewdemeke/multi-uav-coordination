@@ -18,7 +18,7 @@ EXTERNPROTO "../protos/ConcreteStairFlight.proto"
 
 WorldInfo {
   info [
-    "Two-storey concrete frame under construction, four Mavic 2 Pro UAVs and one charging dock."
+    "Two-storey concrete frame under construction, four Mavic 2 Pro UAVs and three charging docks."
     "Scene for persistent multi-UAV construction-site monitoring (IROS construction robotics workshop)."
   ]
   title "Construction-site persistent multi-UAV monitoring"
@@ -41,7 +41,7 @@ Floor {
   name "ground"
   size 60 60
   appearance SandyGround {
-    colorOverride 0.9 0.86 0.76
+    colorOverride 0 0 0
   }
 }
 Solid {
@@ -746,7 +746,7 @@ DEF DRONE_DOCK Solid {
       translation 0 0 0.3
       children [
         Shape {
-          appearance PBRAppearance {
+          appearance DEF DOCK_BODY PBRAppearance {
             baseColor 0.898 0.906 0.898
             roughness 0.4
             metalness 0.25
@@ -928,6 +928,76 @@ DEF DRONE_DOCK Solid {
           USE DOCK_LEG
         ]
       }
+    ]
+  }
+}
+Solid {
+  translation 9.6 -12 0
+  children [
+    DEF SIDE_DOCK_VISUAL Group {
+      children [
+        Pose { translation 0.55 0.55 0.05 children [ Shape { appearance USE DOCK_DARK geometry USE DOCK_LEG } ] }
+        Pose { translation -0.55 0.55 0.05 children [ Shape { appearance USE DOCK_DARK geometry USE DOCK_LEG } ] }
+        Pose { translation -0.55 -0.55 0.05 children [ Shape { appearance USE DOCK_DARK geometry USE DOCK_LEG } ] }
+        Pose { translation 0.55 -0.55 0.05 children [ Shape { appearance USE DOCK_DARK geometry USE DOCK_LEG } ] }
+        Pose { translation 0 0 0.3 children [ Shape { appearance USE DOCK_BODY geometry USE DOCK_ENCLOSURE } ] }
+        Pose { translation 0 0 0.525 children [ Shape { appearance USE DOCK_DARK geometry USE DOCK_PLATFORM } ] }
+        Pose {
+          translation 0 0 0.556
+          children [ Shape { appearance USE DOCK_MARKING geometry Cylinder { height 0.01 radius 0.55 subdivision 32 } } ]
+        }
+        Pose {
+          translation 0 0 0.564
+          children [ Shape { appearance USE DOCK_DARK geometry Cylinder { height 0.01 radius 0.42 subdivision 32 } } ]
+        }
+        Pose { translation -0.15 0 0.573 children [ Shape { appearance USE DOCK_MARKING geometry USE DOCK_H_UPRIGHT } ] }
+        Pose { translation 0.15 0 0.573 children [ Shape { appearance USE DOCK_MARKING geometry USE DOCK_H_UPRIGHT } ] }
+        Pose { translation 0 0 0.573 children [ Shape { appearance USE DOCK_MARKING geometry Box { size 0.21 0.09 0.008 } } ] }
+        Pose { translation 0.58 0.58 0.565 children [ Shape { appearance USE DOCK_BEACON geometry USE DOCK_BEACON_GEOM } ] }
+        Pose { translation -0.58 0.58 0.565 children [ Shape { appearance USE DOCK_BEACON geometry USE DOCK_BEACON_GEOM } ] }
+        Pose { translation -0.58 -0.58 0.565 children [ Shape { appearance USE DOCK_BEACON geometry USE DOCK_BEACON_GEOM } ] }
+        Pose { translation 0.58 -0.58 0.565 children [ Shape { appearance USE DOCK_BEACON geometry USE DOCK_BEACON_GEOM } ] }
+      ]
+    }
+    Charger {
+      translation 0 0 0.55
+      name "dock charger left"
+      battery [ 50000000, 50000000, 5000 ]
+      radius 1
+    }
+  ]
+  name "drone dock left"
+  boundingObject Group {
+    children [
+      Pose { translation 0 0 0.3 children [ USE DOCK_ENCLOSURE ] }
+      Pose { translation 0 0 0.525 children [ USE DOCK_PLATFORM ] }
+      Pose { translation 0.55 0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation -0.55 0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation -0.55 -0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation 0.55 -0.55 0.05 children [ USE DOCK_LEG ] }
+    ]
+  }
+}
+Solid {
+  translation 14.4 -12 0
+  children [
+    USE SIDE_DOCK_VISUAL
+    Charger {
+      translation 0 0 0.55
+      name "dock charger right"
+      battery [ 50000000, 50000000, 5000 ]
+      radius 1
+    }
+  ]
+  name "drone dock right"
+  boundingObject Group {
+    children [
+      Pose { translation 0 0 0.3 children [ USE DOCK_ENCLOSURE ] }
+      Pose { translation 0 0 0.525 children [ USE DOCK_PLATFORM ] }
+      Pose { translation 0.55 0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation -0.55 0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation -0.55 -0.55 0.05 children [ USE DOCK_LEG ] }
+      Pose { translation 0.55 -0.55 0.05 children [ USE DOCK_LEG ] }
     ]
   }
 }

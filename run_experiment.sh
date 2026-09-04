@@ -10,11 +10,15 @@ elif [ -x /Applications/Webots.app/Contents/MacOS/webots ]; then
 else
   echo "Webots was not found. Set WEBOTS_BIN to its executable." >&2; exit 127
 fi
-for experiment_mode in baseline proposed; do
-  mkdir -p "$project_dir/results/$experiment_mode"
-  rm -f "$project_dir/results/$experiment_mode"/UAV*.jsonl
-  printf '%s\n' "$experiment_mode" > "$project_dir/experiment_mode.txt"
-  CR_CBBA_MODE="$experiment_mode" "$webots_bin" --batch --mode=fast "$project_dir/worlds/cr-cbba.wbt"
+for charger_count in 1 2 3; do
+  for experiment_mode in baseline proposed; do
+    result_dir="$project_dir/results/chargers_$charger_count/$experiment_mode"
+    mkdir -p "$result_dir"
+    rm -f "$result_dir"/UAV*.jsonl
+    printf '%s\n' "$experiment_mode" > "$project_dir/experiment_mode.txt"
+    CR_CBBA_MODE="$experiment_mode" CR_CBBA_CHARGERS="$charger_count" \
+      "$webots_bin" --batch --mode=fast "$project_dir/worlds/cr-cbba.wbt"
+  done
 done
 printf '%s\n' proposed > "$project_dir/experiment_mode.txt"
 mkdir -p "$project_dir/.mplconfig"
