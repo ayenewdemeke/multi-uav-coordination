@@ -54,7 +54,17 @@ then descends to make its out-of-service status visually unambiguous.
 When a UAV has no executable bundle, it uses an unreserved charger gap only if
 it provides at least 60 seconds of actual charging after travel, docking, and
 departure time. Otherwise it lands at the nearest free original launch point
-and takes off when a new task generation is released.
+and takes off when a new task generation is released. A UAV performing a full
+charge may also depart before 90% when a new task is released and its current
+energy is sufficient to service a released task and return with the hard
+reserve intact. If no energy-feasible charger interval is available, the UAV
+waits landed and retries from the ground as slots clear; lack of immediate
+charger access alone is not treated as a vehicle failure. A slot acquired from
+the ground is checked against newly received peer state before takeoff, and
+departure is delayed until travel to the reserved start time must begin. If the
+assigned pad becomes conflicting before touchdown, overlapping committed slots
+are ordered by start time and then UAV identifier. The losing UAV invalidates
+its slot and returns to landed waiting instead of hovering at the dock.
 
 All experimental constants and task definitions are in
 `controllers/uav_cbba/mission_config.py`.

@@ -89,6 +89,7 @@ last_started = [None] * N_TASKS
 peers = [{"state": "UNKNOWN", "active": None, "bundle": [],
           "reservation": None, "bundle_committed": False,
           "reservation_committed": False, "charger_index": None,
+          "dock_interval": None, "dock_index": None,
           "standby_index": None, "margin": float("inf")}
          for _ in AGENTS]
 reservation = None
@@ -96,22 +97,29 @@ reservation_path = ()
 bundle_committed = False
 reservation_committed = False
 charge_after_bundle = False
-state = "TAKEOFF"
+state = "GROUND"
 active_task = None
 service_until = None
 charge_until = None
+charge_complete = False
 connection_until = None
 wait_started = None
 target = (0.0, 0.0, CRUISE_ALTITUDE)
 holding_point = CHARGER
 charger_index = None
-standby_index = None
+dock_index = None
+dock_interval = None
+standby_index = me
 opportunistic_charge = False
+deferred_charge = False
+takeoff_for_charger = False
+ground_reservation_ready_at = None
 failure_target = None
 failure_landed = False
 last_status_payload = None
 auction_time = 0.0
 auction_battery = battery
+auction_origin = None
 auction_rounds = 0
 quiet_rounds = 0
 changed = False
@@ -131,6 +139,10 @@ def planning_battery():
     return auction_battery if state == "AUCTION" else battery
 
 
+def auction_on_charger():
+    return auction_origin in ("CHARGER", "CHARGER_EXIT")
+
+
 def descent_duration():
     return (CRUISE_ALTITUDE - PAD_ALTITUDE) / DESCENT_SPEED
 
@@ -144,8 +156,64 @@ def occupies_charger(agent_state):
                            "ASCENDING")
 
 
+def peer_occupies_charger(peer):
+    return peer["dock_index"] is not None and (
+        occupies_charger(peer["state"]) or peer["state"] == "AUCTION")
+
+
+def assigned_pad_conflict():
+    """Detect a newly learned conflict with a ground-acquired slot."""
+    if reservation is None or charger_index is None:
+        return False
+    return any(
+        index != me and peer_charger_index(peer) == charger_index and
+        ((peer_occupies_charger(peer) and
+          overlaps(reservation, peer["dock_interval"])) or
+         (peer["reservation_committed"] and
+          overlaps(reservation, peer["reservation"]) and
+          (peer["reservation"][0], index) < (reservation[0], me)))
+        for index, peer in enumerate(peers))
+
+
+def invalidate_ground_reservation(now, position):
+    """Return to landed waiting when fresh peer state invalidates a slot."""
+    global state, reservation, reservation_committed, charger_index
+    global standby_index, deferred_charge, takeoff_for_charger
+    global ground_reservation_ready_at
+    previous = reservation
+    reservation = None
+    reservation_committed = False
+    charger_index = None
+    deferred_charge = True
+    takeoff_for_charger = False
+    ground_reservation_ready_at = None
+    if standby_index is None:
+        standby_index = choose_standby(position)
+    state = "TO_STANDBY"
+    log("ground_charger_slot_invalidated", now, previous=previous,
+        standby_index=standby_index)
+
+
 def charger_position():
-    return CHARGERS[charger_index] if charger_index is not None else CHARGER
+    index = (dock_index if dock_index is not None and state in (
+        "DESCENDING", "CONNECTING", "CHARGING", "ASCENDING", "AUCTION")
+        else charger_index)
+    return CHARGERS[index] if index is not None else CHARGER
+
+
+def peer_charger_index(peer):
+    return peer["dock_index"] if peer_occupies_charger(peer) else peer[
+        "charger_index"]
+
+
+def peer_intervals(port):
+    for index, peer in enumerate(peers):
+        if index == me:
+            continue
+        if peer["reservation"] is not None and peer["charger_index"] == port:
+            yield index, peer, peer["reservation"], False
+        if peer["dock_interval"] is not None and peer["dock_index"] == port:
+            yield index, peer, peer["dock_interval"], True
 
 
 def charger_distance_bound(position):
@@ -160,8 +228,9 @@ def choose_charger():
             index for index, peer in enumerate(peers)
             if index != me and overlaps(reservation, peer["reservation"])])
         return cohort.index(me) % charger_count
-    occupied = {peer["charger_index"] for index, peer in enumerate(peers)
-                if index != me and (occupies_charger(peer["state"]) or
+    occupied = {peer_charger_index(peer)
+                for index, peer in enumerate(peers)
+                if index != me and (peer_occupies_charger(peer) or
                                     peer["state"] == "TO_CHARGER")}
     return next((index for index in range(charger_count)
                  if index not in occupied), 0)
@@ -207,10 +276,7 @@ def opportunistic_slot(position, now):
     choices = []
     for port in range(charger_count):
         end = next_release(now)
-        intervals = [peer["reservation"]
-                     for index, peer in enumerate(peers)
-                     if index != me and peer["reservation"] is not None
-                     and peer["charger_index"] == port]
+        intervals = [interval for _, _, interval, _ in peer_intervals(port)]
         conflicts = [other for other in intervals
                      if other[0] <= arrival < other[1]]
         if conflicts:
@@ -250,14 +316,25 @@ def reservation_from_start(position, candidate_path, now, start):
     return (start, start + duration)
 
 
-def route_metrics(position, candidate_path, now, include_reservation=True):
+def route_metrics(position, candidate_path, now, include_reservation=True,
+                  dock_departure=False):
     point = position
-    elapsed = 0.0
+    landed_departure = (auction_origin == "GROUND" or
+                        state in ("GROUND", "STANDBY", "CHARGING"))
+    elapsed = (ascent_duration()
+               if auction_on_charger() or landed_departure or dock_departure
+               else 0.0)
     score = 0.0
     for task_id in candidate_path:
         task = TASKS[task_id]
-        elapsed += distance(point, task[2:4]) / CRUISE_SPEED + task[6]
-        score += task[4] * math.exp(-LAMBDA * elapsed / 60.0)
+        elapsed += distance(point, task[2:4]) / CRUISE_SPEED
+        previous_start = (last_started[task_id]
+                          if last_started[task_id] is not None else 0.0)
+        revisit_age = max(
+            1.0, (now + elapsed - previous_start) / task[5])
+        elapsed += task[6]
+        score += (task[4] * revisit_age *
+                  math.exp(-LAMBDA * elapsed / 60.0))
         point = task[2:4]
     elapsed += charger_distance_bound(point) / CRUISE_SPEED
     arrival = now + elapsed  # arrival above the pad; descent starts here
@@ -314,19 +391,6 @@ def planned_reservation(position, candidate_path, now):
     return route_metrics(position, candidate_path, now)[3]
 
 
-def starts_on_time(position, candidate_path, now):
-    point = position
-    elapsed = 0.0
-    for task_id in candidate_path:
-        task = TASKS[task_id]
-        elapsed += distance(point, task[2:4]) / CRUISE_SPEED
-        if now <= deadline(task_id) < now + elapsed:
-            return False
-        elapsed += task[6]
-        point = task[2:4]
-    return True
-
-
 def release_time(task_id):
     if last_started[task_id] is None:
         return 0.0
@@ -351,13 +415,18 @@ def has_new_release(now):
                for task_id in due_tasks(now))
 
 
+def has_feasible_new_release(position, now):
+    return any(
+        (task_id, last_started[task_id]) not in auctioned_releases and
+        best_insertion(position, task_id, now) is not None
+        for task_id in due_tasks(now))
+
+
 def best_insertion(position, task_id, now):
     base_score = route_metrics(position, path, now)[0]
     choices = []
     for index in range(len(path) + 1):
         candidate = path[:index] + [task_id] + path[index:]
-        if not starts_on_time(position, candidate, now):
-            continue
         score, energy, _, _ = route_metrics(position, candidate, now)
         if energy > planning_battery():
             continue
@@ -485,12 +554,10 @@ def feasible_reservation(position, candidate_path, now, interval):
         for _ in range(2 * len(AGENTS) + 1):
             margin = planning_battery() - reservation_energy(
                 position, candidate_path, now, (start, start))
-            blockers = [peer["reservation"]
-                        for index, peer in enumerate(peers)
-                        if index != me and peer["reservation"] is not None
-                        and peer["charger_index"] == port
-                        and (peer["reservation_committed"] or
-                             (peer["margin"], index) < (margin, me))]
+            blockers = [interval for index, peer, interval, docked in
+                        peer_intervals(port)
+                        if docked or peer["reservation_committed"] or
+                        (peer["margin"], index) < (margin, me)]
             candidate = reservation_from_start(
                 position, candidate_path, now, start)
             if candidate is None:
@@ -509,10 +576,7 @@ def next_open_reservation(position, candidate_path, now, start):
     choices = []
     for port in range(charger_count):
         port_start = start
-        intervals = [peer["reservation"]
-                     for index, peer in enumerate(peers)
-                     if index != me and peer["reservation"] is not None
-                     and peer["charger_index"] == port]
+        intervals = [interval for _, _, interval, _ in peer_intervals(port)]
         for _ in range(2 * len(AGENTS) + 1):
             candidate = reservation_from_start(
                 position, candidate_path, now, port_start)
@@ -604,11 +668,12 @@ def resolve_charger(message, now, position):
                 reservation=reservation)
 
 
-def enter_auction():
+def enter_auction(origin="AIR"):
     global state, auction_time, auction_rounds, quiet_rounds, changed
-    global auction_battery
+    global auction_battery, auction_origin
     global bundle_committed, reservation_committed, charge_after_bundle
     state = "AUCTION"
+    auction_origin = origin
     auction_time = robot.getTime()
     auction_battery = battery
     auction_rounds = 0
@@ -618,8 +683,6 @@ def enter_auction():
     reservation_committed = False
     charge_after_bundle = False
     charging_releases.clear()
-    auctioned_releases.update(
-        (task_id, last_started[task_id]) for task_id in due_tasks(auction_time))
 
 
 def release_bundle(clear_reservation=True):
@@ -640,7 +703,8 @@ def release_bundle(clear_reservation=True):
 def request_charger(now, position):
     """Execute the charger leg already committed during allocation."""
     global state, reservation, reservation_committed, holding_point
-    global charger_index
+    global charger_index, standby_index, deferred_charge
+    global takeoff_for_charger
     release_bundle(clear_reservation=False)
     if reservation is None and mode == "proposed":
         preferred = route_metrics(position, [], now)[3]
@@ -652,8 +716,16 @@ def request_charger(now, position):
                                       else (None, None))
         reservation_committed = reservation is not None
         if reservation is None:
-            fail_uav(now, "no_energy_feasible_charging_slot")
+            deferred_charge = True
+            takeoff_for_charger = False
+            if standby_index is None:
+                standby_index = choose_standby(position)
+            state = "TO_STANDBY"
+            log("charger_deferred_to_ground", now,
+                standby_index=standby_index,
+                battery_soc=battery / BATTERY_CAPACITY_J)
             return
+    deferred_charge = False
     if charger_index is None:
         charger_index = choose_charger()
     dock = charger_position()
@@ -670,9 +742,12 @@ def request_charger(now, position):
 
 def begin_charging(now):
     global state, wait_started, reservation, charger_index
+    global takeoff_for_charger
+    global dock_index, dock_interval, reservation_committed
+    global charge_complete
     occupied = [index for index, peer in enumerate(peers)
-                if index != me and occupies_charger(peer["state"])
-                and peer["charger_index"] == charger_index]
+                if index != me and peer_occupies_charger(peer)
+                and peer_charger_index(peer) == charger_index]
     if occupied:
         if mode == "baseline":
             state = "WAIT_CHARGER"
@@ -685,14 +760,21 @@ def begin_charging(now):
         return
     if charger_index is None:
         charger_index = choose_charger()
+    takeoff_for_charger = False
+    charge_complete = False
+    dock_index = charger_index
     state = "DESCENDING"
     if not opportunistic_charge:
         touchdown_soc = ((battery - POWER_W * descent_duration()) /
                          BATTERY_CAPACITY_J)
         reservation = (now, now + descent_duration() + DOCK_CONNECTION_S +
                        charge_duration(touchdown_soc) + ascent_duration())
-    log("dock_start", now, reservation=reservation,
-        charger_index=charger_index,
+    dock_interval = reservation
+    reservation = None
+    reservation_committed = False
+    charger_index = None
+    log("dock_start", now, reservation=dock_interval,
+        charger_index=dock_index,
         battery_soc=battery / BATTERY_CAPACITY_J)
 
 
@@ -701,6 +783,7 @@ def fail_uav(now, reason):
     global state, reservation, reservation_committed, active_task
     global service_until, charge_until, connection_until
     global failure_target, failure_landed, opportunistic_charge
+    global charger_index, dock_index, dock_interval, auction_origin
     if state == "FAILED":
         return
     release_bundle()
@@ -710,6 +793,10 @@ def fail_uav(now, reason):
     connection_until = None
     reservation = None
     reservation_committed = False
+    charger_index = None
+    dock_index = None
+    dock_interval = None
+    auction_origin = None
     opportunistic_charge = False
     failure_target = emergency_landing_point((gps.getValues()[0],
                                               gps.getValues()[1]))
@@ -721,6 +808,7 @@ def fail_uav(now, reason):
 
 log("mission_start", 0.0, initial_soc=INITIAL_SOC[me],
     charger_count=charger_count, mission_duration_s=mission_duration)
+enter_auction("GROUND")
 while robot.step(dt) != -1:
     now = robot.getTime()
     if now > mission_duration:
@@ -732,7 +820,11 @@ while robot.step(dt) != -1:
     px, py, pz = gps.getValues()
     position = (px, py)
     allocation_reply = False
-    if state not in ("CONNECTING", "CHARGING", "STANDBY", "FAILED"):
+    charging_now = state == "CHARGING" or (
+        state == "AUCTION" and auction_on_charger())
+    landed_now = (state in ("GROUND", "STANDBY") or
+                  (state == "AUCTION" and auction_origin == "GROUND"))
+    if state != "CONNECTING" and not charging_now and not landed_now and state != "FAILED":
         reserve_energy = RESERVE_FRACTION * BATTERY_CAPACITY_J
         next_battery = battery - POWER_W * step_seconds
         if next_battery < reserve_energy - EPSILON:
@@ -741,7 +833,7 @@ while robot.step(dt) != -1:
         else:
             battery = next_battery
         minimum_soc = min(minimum_soc, battery / BATTERY_CAPACITY_J)
-    elif state == "CHARGING":
+    elif charging_now:
         battery = min(TARGET_SOC * BATTERY_CAPACITY_J,
                       battery + CHARGE_RATE_SOC_PER_S *
                       BATTERY_CAPACITY_J * step_seconds)
@@ -765,6 +857,8 @@ while robot.step(dt) != -1:
                                  reservation_committed=message.get(
                                      "reservation_committed", False),
                                  charger_index=message.get("charger_index"),
+                                 dock_interval=message.get("dock_interval"),
+                                 dock_index=message.get("dock_index"),
                                  standby_index=message.get("standby_index"))
             for task_id, started_at in enumerate(message["last_started"]):
                 if (started_at is not None and
@@ -804,11 +898,35 @@ while robot.step(dt) != -1:
             bundle_committed = bool(bundle)
             charge_after_bundle = needs_charge_after(position, path)
             reservation_committed = reservation is not None
+            auctioned_releases.update(
+                (task_id, last_started[task_id])
+                for task_id in due_tasks(auction_time)
+                if z[task_id] is not None or
+                best_insertion(position, task_id, auction_time) is not None)
             log("allocation_converged", now,
                 rounds=auction_rounds,
                 path=[TASKS[task_id][0] for task_id in path],
                 reservation=reservation)
-            state = "IDLE"
+            origin = auction_origin
+            auction_origin = None
+            if origin == "GROUND":
+                state = "TAKEOFF" if path else "STANDBY"
+            elif origin in ("CHARGER", "CHARGER_EXIT"):
+                departing = bool(path) or origin == "CHARGER_EXIT"
+                if departing:
+                    dock_interval = (dock_interval[0],
+                                     now + ascent_duration())
+                    if not charge_complete:
+                        log("charge_end", now,
+                            departure_soc=battery / BATTERY_CAPACITY_J,
+                            reason=("task_assignment" if path else
+                                    "opportunistic_window_end"))
+                        charge_complete = True
+                    state = "ASCENDING"
+                else:
+                    state = "CHARGING"
+            else:
+                state = "IDLE"
 
     if state == "AUCTION" or allocation_reply:
         margin = (planning_battery() - reservation_energy(
@@ -822,10 +940,20 @@ while robot.step(dt) != -1:
                  reservation_committed=reservation_committed,
                  request_reply=state == "AUCTION")
 
+    if (state in ("TAKEOFF", "TO_CHARGER") and takeoff_for_charger and
+            assigned_pad_conflict()):
+        invalidate_ground_reservation(now, position)
+
     if state == "TAKEOFF":
         target = (px, py, CRUISE_ALTITUDE)
         if pz >= TAKEOFF_ALTITUDE_M:
-            enter_auction()
+            if takeoff_for_charger:
+                request_charger(now, position)
+            elif path:
+                standby_index = None
+                state = "IDLE"
+            else:
+                enter_auction()
     elif state == "SERVICE":
         target = (px, py, CRUISE_ALTITUDE)
         if now >= service_until:
@@ -902,8 +1030,8 @@ while robot.step(dt) != -1:
             if reservation is None:
                 fail_uav(now, "missed_reservation_no_feasible_recovery")
         if state != "FAILED":
-            occupied = any(occupies_charger(peer["state"])
-                           and peer["charger_index"] == charger_index
+            occupied = any(peer_occupies_charger(peer)
+                           and peer_charger_index(peer) == charger_index
                            for index, peer in enumerate(peers) if index != me)
             early = (mode == "proposed" and reservation and
                      now + charger_distance / CRUISE_SPEED < reservation[0])
@@ -921,8 +1049,8 @@ while robot.step(dt) != -1:
         travel_time = distance(position, charger_position()) / CRUISE_SPEED
         ready = (state == "WAIT_CHARGER" or reservation is None or
                  now + travel_time >= reservation[0])
-        occupied = any(occupies_charger(peer["state"])
-                       and peer["charger_index"] == charger_index
+        occupied = any(peer_occupies_charger(peer)
+                       and peer_charger_index(peer) == charger_index
                        for index, peer in enumerate(peers) if index != me)
         if ready and not occupied:
             if wait_started is not None:
@@ -933,9 +1061,9 @@ while robot.step(dt) != -1:
     elif state == "DESCENDING":
         target = (*charger_position(), PAD_ALTITUDE)
         blocking = [index for index, peer in enumerate(peers)
-                    if index != me and peer["charger_index"] == charger_index and
-                    (peer["state"] in ("CONNECTING", "CHARGING", "ASCENDING")
-                     or (peer["state"] == "DESCENDING" and index < me))]
+                    if index != me and peer_charger_index(peer) == dock_index and
+                    (peer_occupies_charger(peer) and
+                     (peer["state"] != "DESCENDING" or index < me))]
         if blocking:
             state = "WAIT_RESERVATION" if mode == "proposed" else "WAIT_CHARGER"
             wait_started = now
@@ -953,50 +1081,90 @@ while robot.step(dt) != -1:
             duration = charge_duration(battery / BATTERY_CAPACITY_J)
             if opportunistic_charge:
                 duration = min(duration, max(
-                    0.0, reservation[1] - now - ascent_duration()))
+                    0.0, dock_interval[1] - now - ascent_duration()))
             charge_until = now + duration
             log("charge_start", now, until=charge_until,
                 duration_s=duration,
                 arrival_soc=battery / BATTERY_CAPACITY_J)
     elif state == "CHARGING":
         target = (*charger_position(), PAD_ALTITUDE)
-        if now >= charge_until or battery >= (
-                TARGET_SOC * BATTERY_CAPACITY_J - EPSILON):
+        task_release = (has_new_release(now) and
+                        has_feasible_new_release(position, now))
+        if task_release:
+            enter_auction("CHARGER")
+        elif opportunistic_charge and now >= charge_until:
+            enter_auction("CHARGER_EXIT")
+        elif (not charge_complete and battery >=
+              TARGET_SOC * BATTERY_CAPACITY_J - EPSILON):
             battery = min(battery, TARGET_SOC * BATTERY_CAPACITY_J)
             log("charge_end", now,
-                departure_soc=battery / BATTERY_CAPACITY_J)
-            state = "ASCENDING"
+                departure_soc=battery / BATTERY_CAPACITY_J,
+                reason="charge_target")
+            charge_complete = True
+            dock_interval = (dock_interval[0], mission_duration)
     elif state == "ASCENDING":
         target = (*charger_position(), CRUISE_ALTITUDE)
         if pz >= TAKEOFF_ALTITUDE_M:
             log("dock_end", now,
                 departure_soc=battery / BATTERY_CAPACITY_J)
             was_opportunistic = opportunistic_charge
-            reservation = None
-            reservation_committed = False
+            dock_index = None
+            dock_interval = None
             opportunistic_charge = False
-            if was_opportunistic and not has_new_release(now):
+            if path:
+                state = "IDLE"
+            elif was_opportunistic and not has_new_release(now):
+                reservation = None
+                reservation_committed = False
+                charger_index = None
                 standby_index = choose_standby(position)
                 state = "TO_STANDBY"
             else:
+                reservation = None
+                reservation_committed = False
+                charger_index = None
                 enter_auction()
     elif state == "TO_STANDBY":
         standby = STANDBY_POINTS[standby_index]
         horizontal = distance(position, standby)
         target = ((*standby, pz) if horizontal > ARRIVAL_RADIUS_M else
                   (*standby, 0.07))
-        if has_new_release(now):
-            standby_index = None
-            state = "TAKEOFF"
+        if has_new_release(now) and not deferred_charge:
+            enter_auction()
         elif horizontal <= ARRIVAL_RADIUS_M and pz <= 0.07:
             state = "STANDBY"
             log("standby_landed", now, standby_index=standby_index)
     elif state == "STANDBY":
         target = (*STANDBY_POINTS[standby_index], 0.07)
-        if has_new_release(now):
+        if takeoff_for_charger:
+            if assigned_pad_conflict():
+                invalidate_ground_reservation(now, position)
+            else:
+                travel = (ascent_duration() + distance(
+                    position, charger_position()) / CRUISE_SPEED)
+                departure = reservation[0] - travel
+                if now >= max(departure, ground_reservation_ready_at):
+                    reservation_committed = True
+                    standby_index = None
+                    state = "TAKEOFF"
+        elif deferred_charge:
+            preferred = route_metrics(position, [], now)[3]
+            if preferred is not None:
+                preferred = (preferred[0] + ascent_duration(), preferred[1])
+            result = feasible_reservation(position, [], now, preferred)
+            if result is not None:
+                reservation, charger_index = result
+                reservation_committed = True
+                deferred_charge = False
+                takeoff_for_charger = True
+                ground_reservation_ready_at = (
+                    now + QUIET_ROUNDS * step_seconds)
+                log("ground_charger_slot_acquired", now,
+                    reservation=reservation, charger_index=charger_index)
+        elif (has_new_release(now) and
+              has_feasible_new_release(position, now)):
             log("standby_departure", now, standby_index=standby_index)
-            standby_index = None
-            state = "TAKEOFF"
+            enter_auction("GROUND")
     elif state == "FAILED":
         horizontal = distance(position, failure_target)
         target = ((*failure_target, pz) if horizontal > ARRIVAL_RADIUS_M else
@@ -1005,13 +1173,20 @@ while robot.step(dt) != -1:
             failure_landed = True
             log("uav_landed_out_of_service", now, position=failure_target)
     else:  # AUCTION
-        target = (px, py, CRUISE_ALTITUDE)
+        if auction_on_charger():
+            target = (*charger_position(), PAD_ALTITUDE)
+        elif auction_origin == "GROUND":
+            target = (px, py, pz)
+        else:
+            target = (px, py, CRUISE_ALTITUDE)
 
     status_payload = dict(state=state, active=active_task, bundle=bundle,
                           reservation=reservation,
                           bundle_committed=bundle_committed,
                           reservation_committed=reservation_committed,
                           charger_index=charger_index,
+                          dock_interval=dock_interval,
+                          dock_index=dock_index,
                           standby_index=standby_index,
                           last_started=last_started)
     status_signature = json.dumps(status_payload, sort_keys=True)
