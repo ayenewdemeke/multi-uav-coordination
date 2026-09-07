@@ -68,3 +68,8 @@ TASK_LANDING_ZONES = (
 TASK_LANDING_MARGIN_M = 0.5
 STRUCTURE_BOUNDS = (-6.0, 6.0, -5.0, 5.0)
 EMERGENCY_LANDING_MARGIN_M = 2.0
+# Guards for the coordination fixes in uav_cbba.py.
+AUCTION_COOLDOWN_S = 3.0         # minimum gap between auctions by one UAV
+GROUND_RETRY_BACKOFF_S = 30.0    # wait after a ground charger slot is lost
+AUCTION_ROUND_LIMIT = 100        # liveness cap on auction rounds
+PLANNING_MARGIN_FRACTION = 0.01  # held clear of the reserve when admitting

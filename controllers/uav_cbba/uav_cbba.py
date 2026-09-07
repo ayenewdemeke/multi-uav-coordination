@@ -122,6 +122,9 @@ auction_battery = battery
 auction_origin = None
 auction_rounds = 0
 quiet_rounds = 0
+last_auction_end = -float("inf")
+ground_retry_after = -float("inf")
+reservation_floor = 0.0
 changed = False
 messages_sent = 0
 reassignments = 0
@@ -137,6 +140,17 @@ def charge_duration(soc):
 def planning_battery():
     """Keep one energy snapshot throughout an allocation auction."""
     return auction_battery if state == "AUCTION" else battery
+
+
+def admissible_energy():
+    """Energy a candidate route may use, held clear of the hard reserve.
+
+    Feasibility is evaluated against the auction-time battery snapshot, but
+    the auction, the dock exit and the ascent all elapse after that estimate
+    is taken, so a route planned to land exactly on the reserve can cross it
+    during the final descent to the pad.
+    """
+    return planning_battery() - PLANNING_MARGIN_FRACTION * BATTERY_CAPACITY_J
 
 
 def auction_on_charger():
@@ -179,7 +193,7 @@ def invalidate_ground_reservation(now, position):
     """Return to landed waiting when fresh peer state invalidates a slot."""
     global state, reservation, reservation_committed, charger_index
     global standby_index, deferred_charge, takeoff_for_charger
-    global ground_reservation_ready_at
+    global ground_reservation_ready_at, ground_retry_after
     previous = reservation
     reservation = None
     reservation_committed = False
@@ -187,6 +201,9 @@ def invalidate_ground_reservation(now, position):
     deferred_charge = True
     takeoff_for_charger = False
     ground_reservation_ready_at = None
+    # Back off before competing again: a UAV that keeps losing the start-time
+    # tie-break would otherwise spin on acquire/invalidate every step.
+    ground_retry_after = now + GROUND_RETRY_BACKOFF_S
     if standby_index is None:
         standby_index = choose_standby(position)
     state = "TO_STANDBY"
@@ -301,11 +318,44 @@ def choose_standby(position):
         position, STANDBY_POINTS[index]))
 
 
-def reservation_from_start(position, candidate_path, now, start):
-    """Build a variable-length dock/charge interval for a proposed start."""
+def landed_wait_site(position, altitude, now):
+    """Choose a lower-energy ground route to the existing charging slot."""
+    if mode != "proposed" or reservation is None or charger_index is None:
+        return None
+    remaining = reservation[0] - now
+    occupied = {peer["standby_index"] for index, peer in enumerate(peers)
+                if index != me and peer["standby_index"] is not None}
+    choices = []
+    for index, point in enumerate(STANDBY_POINTS):
+        if index in occupied:
+            continue
+        legs = (distance(position, point) / CRUISE_SPEED,
+                max(0.0, altitude - 0.07) / DESCENT_SPEED,
+                (CRUISE_ALTITUDE - 0.07) / ASCENT_SPEED,
+                distance(point, CHARGERS[charger_index]) / CRUISE_SPEED)
+        # Round each movement leg and its state transition to controller steps.
+        flight = sum(math.ceil(leg / step_seconds) * step_seconds
+                     for leg in legs) + len(legs) * step_seconds
+        required = (POWER_W * (flight + descent_duration()) +
+                    RESERVE_FRACTION * BATTERY_CAPACITY_J)
+        if flight < remaining and required <= battery:
+            choices.append((flight, index))
+    return min(choices)[1] if choices else None
+
+
+def route_profile(position, candidate_path, now):
+    """Route quantities independent of the proposed charger start time.
+
+    The reservation searches retry a candidate start up to 2N+1 times per pad
+    and the route behind it is identical every time, so it is computed once.
+    """
     _, required, arrival, _ = route_metrics(
         position, candidate_path, now, include_reservation=False)
-    route_energy = required - RESERVE_FRACTION * BATTERY_CAPACITY_J
+    return required, arrival, required - RESERVE_FRACTION * BATTERY_CAPACITY_J
+
+
+def reservation_from_profile(profile, start):
+    required, arrival, route_energy = profile
     arrival_energy = planning_battery() - route_energy
     waiting = max(0.0, start - arrival)
     start_soc = (arrival_energy - POWER_W * waiting) / BATTERY_CAPACITY_J
@@ -314,6 +364,12 @@ def reservation_from_start(position, candidate_path, now, start):
     duration = (descent_duration() + DOCK_CONNECTION_S +
                 charge_duration(start_soc) + ascent_duration())
     return (start, start + duration)
+
+
+def reservation_from_start(position, candidate_path, now, start):
+    """Build a variable-length dock/charge interval for a proposed start."""
+    return reservation_from_profile(
+        route_profile(position, candidate_path, now), start)
 
 
 def route_metrics(position, candidate_path, now, include_reservation=True,
@@ -354,7 +410,7 @@ def route_metrics(position, candidate_path, now, include_reservation=True,
 
 def reservation_energy(position, candidate_path, now, interval):
     """Route energy including any hover until an already chosen reservation."""
-    _, required, arrival, _ = route_metrics(position, candidate_path, now)
+    required, arrival, _ = route_profile(position, candidate_path, now)
     waiting = max(0.0, interval[0] - arrival) if interval else 0.0
     return required + POWER_W * waiting
 
@@ -370,7 +426,8 @@ def route_end(position, candidate_path):
 
 
 def can_service_another(position, available_energy):
-    reserve = RESERVE_FRACTION * BATTERY_CAPACITY_J
+    reserve = (RESERVE_FRACTION + PLANNING_MARGIN_FRACTION) * \
+        BATTERY_CAPACITY_J
     return any(POWER_W * (distance(position, task[2:4]) / CRUISE_SPEED +
                           task[6] + charger_distance_bound(task[2:4]) /
                           CRUISE_SPEED + descent_duration()) +
@@ -422,13 +479,26 @@ def has_feasible_new_release(position, now):
         for task_id in due_tasks(now))
 
 
+def has_unowned_feasible_task(position, now):
+    """A released task this UAV could take that no peer currently holds."""
+    return any(z[task_id] in (None, me) and
+               best_insertion(position, task_id, now) is not None
+               for task_id in due_tasks(now))
+
+
+def may_reauction(now):
+    """Bound the re-auction rate so an unwinnable release cannot spin."""
+    return now - last_auction_end >= AUCTION_COOLDOWN_S
+
+
 def best_insertion(position, task_id, now):
     base_score = route_metrics(position, path, now)[0]
     choices = []
     for index in range(len(path) + 1):
         candidate = path[:index] + [task_id] + path[index:]
-        score, energy, _, _ = route_metrics(position, candidate, now)
-        if energy > planning_battery():
+        score, energy, _, _ = route_metrics(
+            position, candidate, now, include_reservation=False)
+        if energy > admissible_energy():
             continue
         preferred = planned_reservation(position, candidate, now)
         if preferred is not None and feasible_reservation(
@@ -548,18 +618,19 @@ def feasible_reservation(position, candidate_path, now, interval):
     """Return the earliest feasible (interval, physical charger) pair."""
     if interval is None:
         return None
+    profile = route_profile(position, candidate_path, now)
+    required, arrival, _ = profile
     choices = []
     for port in range(charger_count):
         start = interval[0]
         for _ in range(2 * len(AGENTS) + 1):
-            margin = planning_battery() - reservation_energy(
-                position, candidate_path, now, (start, start))
+            margin = planning_battery() - (
+                required + POWER_W * max(0.0, start - arrival))
             blockers = [interval for index, peer, interval, docked in
                         peer_intervals(port)
                         if docked or peer["reservation_committed"] or
                         (peer["margin"], index) < (margin, me)]
-            candidate = reservation_from_start(
-                position, candidate_path, now, start)
+            candidate = reservation_from_profile(profile, start)
             if candidate is None:
                 break
             conflicts = [other for other in blockers
@@ -573,13 +644,13 @@ def feasible_reservation(position, candidate_path, now, interval):
 
 def next_open_reservation(position, candidate_path, now, start):
     """Find an open (interval, physical charger) pair against all slots."""
+    profile = route_profile(position, candidate_path, now)
     choices = []
     for port in range(charger_count):
         port_start = start
         intervals = [interval for _, _, interval, _ in peer_intervals(port)]
         for _ in range(2 * len(AGENTS) + 1):
-            candidate = reservation_from_start(
-                position, candidate_path, now, port_start)
+            candidate = reservation_from_profile(profile, port_start)
             if candidate is None:
                 break
             conflicts = [other for other in intervals
@@ -594,7 +665,7 @@ def next_open_reservation(position, candidate_path, now, start):
 def refresh_energy_plan(position, now):
     """Keep charging need and reservation derived from the current route."""
     global reservation, reservation_path, reservation_committed
-    global charge_after_bundle, changed, charger_index
+    global charge_after_bundle, changed, charger_index, reservation_floor
     new_charge_after = bool(path) and needs_charge_after(position, path)
     preferred = (planned_reservation(position, path, now)
                  if new_charge_after else None)
@@ -606,6 +677,8 @@ def refresh_energy_plan(position, now):
                     new_charge_after != charge_after_bundle)
     reservation_path = tuple(path)
     charge_after_bundle = new_charge_after
+    if route_changed:
+        reservation_floor = 0.0   # a different route admits a different slot
     if route_changed or plan_changed:
         reservation = updated
         charger_index = updated_port
@@ -615,7 +688,7 @@ def refresh_energy_plan(position, now):
 
 def resolve_charger(message, now, position):
     global reservation, reservation_path, reassignments, changed
-    global charger_index
+    global charger_index, reservation_floor
     remote = message.get("reservation")
     remote_committed = message.get(
         "reservation_committed",
@@ -629,6 +702,12 @@ def resolve_charger(message, now, position):
     result = feasible_reservation(position, path, now, reservation)
     if result == (reservation, charger_index):
         return
+    if result is not None and result[0][0] < reservation_floor - EPSILON:
+        # A slot yielded within an auction is never reclaimed earlier in that
+        # same auction.  The reservation start is therefore monotone, which
+        # terminates the shift/counter-shift cycle between peers that
+        # otherwise prevents the auction from ever reaching QUIET_ROUNDS.
+        return
     if remote_committed or (my_margin, me) > (remote_margin, sender):
         released_tasks = []
         if result is not None:
@@ -637,6 +716,7 @@ def resolve_charger(message, now, position):
                 reservation = candidate
                 charger_index = candidate_port
                 reservation_path = tuple(path)
+                reservation_floor = max(reservation_floor, candidate[0])
                 changed = True
                 log("charger_slot_shifted", now, with_agent=AGENTS[sender],
                     reservation=reservation)
@@ -670,9 +750,10 @@ def resolve_charger(message, now, position):
 
 def enter_auction(origin="AIR"):
     global state, auction_time, auction_rounds, quiet_rounds, changed
-    global auction_battery, auction_origin
+    global auction_battery, auction_origin, reservation_floor
     global bundle_committed, reservation_committed, charge_after_bundle
     state = "AUCTION"
+    reservation_floor = 0.0
     auction_origin = origin
     auction_time = robot.getTime()
     auction_battery = battery
@@ -894,23 +975,34 @@ while robot.step(dt) != -1:
         auction_rounds += 1
         quiet_rounds = 0 if changed else quiet_rounds + 1
         changed = False
-        if quiet_rounds >= QUIET_ROUNDS:
+        forced = auction_rounds >= AUCTION_ROUND_LIMIT
+        if quiet_rounds >= QUIET_ROUNDS or forced:
             bundle_committed = bool(bundle)
             charge_after_bundle = needs_charge_after(position, path)
             reservation_committed = reservation is not None
+            # Record every release this auction considered, not only those
+            # won or already owned.  Re-running an identical auction on an
+            # unwinnable release cannot change its outcome; a task nobody
+            # claimed is still picked up through has_unowned_feasible_task.
             auctioned_releases.update(
                 (task_id, last_started[task_id])
-                for task_id in due_tasks(auction_time)
-                if z[task_id] is not None or
-                best_insertion(position, task_id, auction_time) is not None)
+                for task_id in due_tasks(auction_time))
+            last_auction_end = now
             log("allocation_converged", now,
-                rounds=auction_rounds,
+                rounds=auction_rounds, forced=forced,
                 path=[TASKS[task_id][0] for task_id in path],
                 reservation=reservation)
             origin = auction_origin
             auction_origin = None
             if origin == "GROUND":
-                state = "TAKEOFF" if path else "STANDBY"
+                if path:
+                    state = "TAKEOFF"
+                else:
+                    state = "STANDBY"
+                    # Won nothing: resume competing for a charger slot rather
+                    # than waiting on the ground with the request cleared.
+                    if battery < TARGET_SOC * BATTERY_CAPACITY_J - EPSILON:
+                        deferred_charge = True
             elif origin in ("CHARGER", "CHARGER_EXIT"):
                 departing = bool(path) or origin == "CHARGER_EXIT"
                 if departing:
@@ -940,9 +1032,23 @@ while robot.step(dt) != -1:
                  reservation_committed=reservation_committed,
                  request_reply=state == "AUCTION")
 
-    if (state in ("TAKEOFF", "TO_CHARGER") and takeoff_for_charger and
+    if (state in ("TAKEOFF", "TO_CHARGER", "TO_STANDBY") and takeoff_for_charger and
             assigned_pad_conflict()):
         invalidate_ground_reservation(now, position)
+
+    if state in ("TO_CHARGER", "WAIT_RESERVATION") and not takeoff_for_charger:
+        landing = landed_wait_site(position, pz, now)
+        if landing is not None:
+            standby_index = landing
+            takeoff_for_charger = True
+            deferred_charge = False
+            ground_reservation_ready_at = now
+            if wait_started is not None:
+                log("charger_wait_end", now, duration_s=now - wait_started)
+                wait_started = None
+            state = "TO_STANDBY"
+            log("charger_wait_landing", now, standby_index=landing,
+                reservation=reservation, charger_index=charger_index)
 
     if state == "TAKEOFF":
         target = (px, py, CRUISE_ALTITUDE)
@@ -984,7 +1090,8 @@ while robot.step(dt) != -1:
             task_id = path[0]
             task = TASKS[task_id]
             task_energy = route_metrics(position, [task_id], now)[1]
-            if task_energy > battery:
+            if task_energy > battery - PLANNING_MARGIN_FRACTION * \
+                    BATTERY_CAPACITY_J:
                 request_charger(now, position)
             else:
                 active_task = task_id
@@ -992,8 +1099,12 @@ while robot.step(dt) != -1:
                 target = (task[2], task[3], CRUISE_ALTITUDE)
         elif charge_after_bundle or not can_service_another(position, battery):
             request_charger(now, position)
-        elif has_new_release(now):
-            enter_auction()
+        elif (has_new_release(now) or
+              has_unowned_feasible_task(position, now)):
+            if may_reauction(now):
+                enter_auction()
+            else:
+                target = (px, py, CRUISE_ALTITUDE)   # hold out the cooldown
         else:
             slot = opportunistic_slot(position, now)
             if slot is not None:
@@ -1129,7 +1240,20 @@ while robot.step(dt) != -1:
         horizontal = distance(position, standby)
         target = ((*standby, pz) if horizontal > ARRIVAL_RADIUS_M else
                   (*standby, 0.07))
-        if has_new_release(now) and not deferred_charge:
+        landing_conflict = takeoff_for_charger and any(
+            index != me and peer["standby_index"] == standby_index and
+            (peer["state"] != "TO_STANDBY" or index < me)
+            for index, peer in enumerate(peers))
+        if landing_conflict:
+            standby_index = None
+            takeoff_for_charger = False
+            request_charger(now, position)
+            target = (px, py, pz)
+        elif (not takeoff_for_charger and may_reauction(now) and
+              has_unowned_feasible_task(position, now)):
+            # Serving a released task takes precedence over queueing for a
+            # charger, including while a charger request is deferred.
+            deferred_charge = False
             enter_auction()
         elif horizontal <= ARRIVAL_RADIUS_M and pz <= 0.07:
             state = "STANDBY"
@@ -1147,7 +1271,18 @@ while robot.step(dt) != -1:
                     reservation_committed = True
                     standby_index = None
                     state = "TAKEOFF"
-        elif deferred_charge:
+        elif may_reauction(now) and has_unowned_feasible_task(position, now):
+            # Ordered ahead of the charger branch deliberately.  A landed UAV
+            # with the energy to serve a released task must be able to return
+            # to the auction: deferred_charge is re-armed by every slot
+            # invalidation and previously shadowed this branch permanently,
+            # stranding a healthy UAV on the ground for the rest of the
+            # mission while its tasks went late.
+            deferred_charge = False
+            log("standby_departure", now, standby_index=standby_index,
+                battery_soc=battery / BATTERY_CAPACITY_J)
+            enter_auction("GROUND")
+        elif deferred_charge and now >= ground_retry_after:
             preferred = route_metrics(position, [], now)[3]
             if preferred is not None:
                 preferred = (preferred[0] + ascent_duration(), preferred[1])
@@ -1161,10 +1296,8 @@ while robot.step(dt) != -1:
                     now + QUIET_ROUNDS * step_seconds)
                 log("ground_charger_slot_acquired", now,
                     reservation=reservation, charger_index=charger_index)
-        elif (has_new_release(now) and
-              has_feasible_new_release(position, now)):
-            log("standby_departure", now, standby_index=standby_index)
-            enter_auction("GROUND")
+            else:
+                ground_retry_after = now + GROUND_RETRY_BACKOFF_S
     elif state == "FAILED":
         horizontal = distance(position, failure_target)
         target = ((*failure_target, pz) if horizontal > ARRIVAL_RADIUS_M else
