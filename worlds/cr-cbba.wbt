@@ -1222,6 +1222,41 @@ Solid {
   }
 }
 Solid {
+  translation 7.2 -12 0
+  children [
+    USE SIDE_DOCK_VISUAL
+    Charger {
+      translation 0 0 0.55
+      name "dock charger far left"
+      battery [
+        50000000, 50000000, 5000
+      ]
+      radius 1
+    }
+  ]
+  name "drone dock far left"
+  boundingObject Group {
+    children [
+      Transform {
+        translation 0 0 0.3
+        children [
+          Box {
+            size 1.4 1.4 0.6
+          }
+        ]
+      }
+      Transform {
+        translation 0 0 0.61
+        children [
+          Box {
+            size 1.5 1.5 0.02
+          }
+        ]
+      }
+    ]
+  }
+}
+Solid {
   translation 0 20 1
   children [
     Shape {

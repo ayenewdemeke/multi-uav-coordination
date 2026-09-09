@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate the three-charger experiment into paper metrics."""
+"""Aggregate the charger-count ablation into paper metrics."""
 import csv
 import json
 import math
@@ -9,16 +9,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "controllers" / "uav_cbba"))
 from mission_config import (  # noqa: E402
-    CHARGERS, MISSION_DURATION_S, RESERVE_FRACTION, TASKS as TASK_DEFINITIONS)
+    AGENTS, CHARGERS, MISSION_DURATION_S, TASKS as TASK_DEFINITIONS)
 
 TASKS = {task[0]: (task[1], task[5]) for task in TASK_DEFINITIONS}
-MODES = ("baseline", "proposed")
 MISSION = MISSION_DURATION_S
 
 
-def load(chargers, mode):
+def load(chargers):
     rows = []
-    folder = ROOT / "results" / f"chargers_{chargers}" / mode
+    folder = ROOT / "results" / f"chargers_{chargers}"
     for path in sorted(folder.glob("UAV*.jsonl")):
         rows.extend(json.loads(line) for line in path.read_text().splitlines()
                     if line)
@@ -44,7 +43,7 @@ def charging_seconds(rows):
     return total + sum(max(0.0, MISSION - start) for start in starts.values())
 
 
-def summarize(chargers, mode, rows):
+def summarize(chargers, rows):
     starts = task_events(rows, "task_start")
     completions = task_events(rows, "task_complete")
     violations = {"Safety": 0, "Quality": 0}
@@ -55,10 +54,13 @@ def summarize(chargers, mode, rows):
                 0, math.ceil((current - previous) / revisit) - 1)
             previous = current
     ends = [row for row in rows if row["event"] == "mission_end"]
+    if len(ends) != len(AGENTS):
+        raise ValueError(
+            f"Incomplete {chargers}-charger run: "
+            f"{len(ends)}/{len(AGENTS)} UAVs reached mission end")
     cycles = [row["rounds"] for row in rows
-              if row["event"] == "allocation_converged"]
-    minimum_soc = min((row.get("minimum_soc", 1.0) for row in ends),
-                      default=1.0)
+              if row["event"] == "allocation_converged" and
+              not row.get("forced", False)]
     completed = {
         kind: sum(len(completions[task])
                   for task, (task_kind, _) in TASKS.items()
@@ -69,10 +71,7 @@ def summarize(chargers, mode, rows):
     failed = {row["agent"] for row in rows if row["event"] == "uav_failed"}
     return {
         "chargers": chargers,
-        "mode": mode,
         "failed_uavs": len(failed),
-        "charger_conflicts": sum(row["event"] == "charger_conflict"
-                                 for row in rows),
         "charger_waiting_s": round(sum(
             row.get("duration_s", 0.0) for row in rows
             if row["event"] == "charger_wait_end"), 3),
@@ -85,30 +84,29 @@ def summarize(chargers, mode, rows):
         "completed_safety_services": completed["Safety"],
         "completed_quality_services": completed["Quality"],
         "completed_services": sum(completed.values()),
-        "reserve_violations": sum(
-            row.get("minimum_soc", 1.0) < RESERVE_FRACTION for row in ends),
-        "minimum_soc_pct": round(100.0 * minimum_soc, 2),
         "charging_events": sum(row["event"] == "charge_start" for row in rows),
         "charger_utilization_pct": round(
             100.0 * used_seconds / (chargers * MISSION), 3),
-        "charging_reassignments": sum(
-            row.get("released_count", 1) for row in rows
-            if row["event"] == "charger_conflict_resolved"),
         "reservation_shifts": sum(
             row["event"] == "charger_slot_shifted" for row in rows),
-        "mean_allocation_rounds": round(
+        "forced_auction_exits": sum(
+            row["event"] == "allocation_converged" and row.get("forced", False)
+            for row in rows),
+        "mean_converged_allocation_rounds": round(
             sum(cycles) / len(cycles), 3) if cycles else 0.0,
         "communication_messages": sum(row.get("messages", 0) for row in ends),
     }
 
 
 def main():
-    chargers = len(CHARGERS)
-    data = {mode: load(chargers, mode) for mode in MODES}
-    missing = [mode for mode, rows in data.items() if not rows]
+    counts = range(1, len(CHARGERS) + 1)
+    data = {chargers: load(chargers) for chargers in counts}
+    missing = [f"{chargers} charger(s)"
+               for chargers, rows in data.items() if not rows]
     if missing:
         raise SystemExit("Missing logs for: " + ", ".join(missing))
-    summaries = [summarize(chargers, mode, data[mode]) for mode in MODES]
+    summaries = [summarize(chargers, data[chargers])
+                 for chargers in counts]
     destination = ROOT / "results" / "charger_count_metrics.csv"
     with destination.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=summaries[0].keys())
