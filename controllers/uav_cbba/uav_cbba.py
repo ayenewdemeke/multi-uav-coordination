@@ -91,7 +91,6 @@ charge_after_bundle = False
 state = "GROUND"
 active_task = None
 service_until = None
-charge_until = None
 charge_complete = False
 wait_started = None
 target = (0.0, 0.0, CRUISE_ALTITUDE)
@@ -660,26 +659,6 @@ def feasible_reservation(position, candidate_path, now, interval):
     return min(choices, default=None, key=lambda choice: choice[0])
 
 
-def next_open_reservation(position, candidate_path, now, start):
-    """Find an open (interval, physical charger) pair against all slots."""
-    profile = route_profile(position, candidate_path, now)
-    choices = []
-    for port in range(charger_count):
-        port_start = start
-        intervals = [interval for _, _, interval, _ in peer_intervals(port)]
-        for _ in range(2 * len(AGENTS) + 1):
-            candidate = reservation_from_profile(profile, port_start, port)
-            if candidate is None:
-                break
-            conflicts = [other for other in intervals
-                         if overlaps(candidate, other)]
-            if not conflicts:
-                choices.append((candidate, port))
-                break
-            port_start = min(other[1] for other in conflicts)
-    return min(choices, default=None, key=lambda choice: choice[0])
-
-
 def refresh_energy_plan(position, now):
     """Keep charging need and reservation derived from the current route."""
     global reservation, reservation_path, reservation_committed
@@ -810,9 +789,6 @@ def request_charger(now, position):
     if reservation is None:
         preferred = route_metrics(position, [], now)[3]
         result = feasible_reservation(position, [], now, preferred)
-        if result is None and preferred is not None:
-            result = next_open_reservation(
-                position, [], now, preferred[0])
         reservation, charger_index = (result if result is not None
                                       else (None, None))
         reservation_committed = reservation is not None
@@ -887,7 +863,7 @@ def begin_charging(now, position):
 def fail_uav(now, reason):
     """Safely remove a UAV that cannot preserve the hard SoC reserve."""
     global state, reservation, reservation_committed, active_task
-    global service_until, charge_until
+    global service_until
     global opportunistic_charge
     global charger_index, dock_index, dock_interval, auction_origin
     if state == "FAILED":
@@ -895,7 +871,6 @@ def fail_uav(now, reason):
     release_bundle()
     active_task = None
     service_until = None
-    charge_until = None
     reservation = None
     reservation_committed = False
     charger_index = None
@@ -1160,9 +1135,6 @@ while robot.step(dt) != -1:
             preferred = reservation_from_start(
                 position, [], now, arrival, charger_index)
             result = feasible_reservation(position, [], now, preferred)
-            if result is None:
-                result = next_open_reservation(
-                    position, [], now, arrival)
             reservation, charger_index = (result if result is not None
                                           else (None, None))
             reservation_committed = reservation is not None
@@ -1219,8 +1191,7 @@ while robot.step(dt) != -1:
             if opportunistic_charge:
                 duration = min(duration, max(
                     0.0, dock_interval[1] - now - ascent_duration()))
-            charge_until = now + duration
-            log("charge_start", now, until=charge_until,
+            log("charge_start", now, until=now + duration,
                 duration_s=duration,
                 arrival_soc=battery / BATTERY_CAPACITY_J)
     elif state == "CHARGING":

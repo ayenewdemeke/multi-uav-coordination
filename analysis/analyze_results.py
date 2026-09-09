@@ -69,18 +69,30 @@ def summarize(chargers, rows):
     }
     used_seconds = charging_seconds(rows)
     failed = {row["agent"] for row in rows if row["event"] == "uav_failed"}
+    # Lateness is reported per service start.  The unnormalized sum rewards
+    # configurations that serve fewer tasks, because a task that is never
+    # started contributes no lateness at all.
+    lateness = [max(0.0, row["time"] - row["deadline"]) for row in rows
+                if row["event"] == "task_start"]
     return {
         "chargers": chargers,
         "failed_uavs": len(failed),
+        # Constraint (5) is enforced during allocation, so a physical pad
+        # collision at execution time is a violation, not a routine event.
+        "charger_conflicts": sum(row["event"] == "charger_conflict"
+                                 for row in rows),
         "charger_waiting_s": round(sum(
             row.get("duration_s", 0.0) for row in rows
             if row["event"] == "charger_wait_end"), 3),
         "safety_revisit_violations": violations["Safety"],
         "quality_revisit_violations": violations["Quality"],
         "total_revisit_violations": sum(violations.values()),
-        "cumulative_start_lateness_s": round(sum(
-            max(0.0, row["time"] - row["deadline"]) for row in rows
-            if row["event"] == "task_start"), 3),
+        "mean_start_lateness_s": round(
+            sum(lateness) / len(lateness), 3) if lateness else 0.0,
+        "late_start_fraction": round(
+            sum(value > 0.0 for value in lateness) / len(lateness),
+            4) if lateness else 0.0,
+        "cumulative_start_lateness_s": round(sum(lateness), 3),
         "completed_safety_services": completed["Safety"],
         "completed_quality_services": completed["Quality"],
         "completed_services": sum(completed.values()),
