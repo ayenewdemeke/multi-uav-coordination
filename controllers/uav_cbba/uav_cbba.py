@@ -944,13 +944,10 @@ while robot.step(dt) != -1:
                         (last_started[task_id] is None or
                          started_at > last_started[task_id])):
                     last_started[task_id] = started_at
-                    if task_id != active_task:
+                    if task_id != active_task and (
+                            y[task_id], z[task_id]) != (0.0, None):
                         y[task_id], z[task_id] = 0.0, None
-                        if task_id in bundle:
-                            bundle.remove(task_id)
-                            changed = True
-                        if task_id in path:
-                            path.remove(task_id)
+                        changed = True
         elif message["kind"] == "allocation":
             allocation_reply |= message.get("request_reply", False)
             peers[sender]["reservation"] = message.get("reservation")
@@ -961,6 +958,10 @@ while robot.step(dt) != -1:
             resolve_cbba(message, now)
             if state == "AUCTION":
                 resolve_charger(message, auction_time, position)
+
+    # Standard CBBA release rule (Choi, Brunet, and How, 2009): losing a task
+    # invalidates the marginal scores of every task bundled after it.
+    truncate_lost_bundle()
 
     if tuple(path) != path_before_messages and state not in (
             "TO_CHARGER", "WAIT_RESERVATION",
