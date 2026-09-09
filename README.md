@@ -1,10 +1,8 @@
 # Charging-Constrained CBBA Experiment
 
 Minimal Webots R2025a research implementation for four UAVs, eight recurring
-construction-monitoring tasks, and one to three parallel charging ports.
-The 1.4 m-wide pads have an assumed 1 m clear gap (2.4 m center spacing);
-experiments activate the first one, two, or three according to
-`CR_CBBA_CHARGERS`.
+construction-monitoring tasks, and three parallel charging ports.
+The 1.4 m-wide pads have an assumed 1 m clear gap (2.4 m center spacing).
 
 UAV motion is kinematic at the configured 4 m/s. This matches the manuscript's
 constant-speed, constant-power task-level model and keeps predicted task and
@@ -43,10 +41,10 @@ next start is due, and route insertions that would make an achievable deadline
 late are infeasible. A start after the due time is a violation. Any holding
 time before a reserved charger interval is included in battery feasibility.
 Each UAV starts at 90% SoC. Charging is progressive and linear from 20% to the
-90% operational target in 40 minutes. Docking explicitly simulates descent to
-the pad, a 5-second touchdown/connection handshake, charging, takeoff, and
-ascent back to cruise altitude. Reservations cover that entire sequence, and
-vertical flight time and energy are included in feasibility calculations.
+90% operational target in 40 minutes. Charging begins at touchdown. Charger
+access explicitly includes descent to the pad, charging, takeoff, and ascent
+back to cruise altitude. Reservations cover that entire sequence, and vertical
+flight time and energy are included in feasibility calculations.
 A UAV that crosses the 20% hard reserve is marked failed and removed from task
 execution; it moves clear of the central structure or task prop when necessary,
 then descends to make its out-of-service status visually unambiguous.
@@ -75,11 +73,11 @@ All experimental constants and task definitions are in
 ./run_experiment.sh
 ```
 
-The script runs 120-minute baseline and proposed simulations for one, two, and
-three chargers, then writes `results/charger_count_metrics.csv`. Raw per-UAV
-JSONL logs are stored beneath `results/chargers_N/` and ignored by Git.
+The script runs 120-minute baseline and proposed simulations with three
+chargers, then writes `results/charger_count_metrics.csv`. Raw per-UAV
+JSONL logs are stored beneath `results/chargers_3/` and ignored by Git.
 
-To run one method interactively, set `CR_CBBA_MODE` and `CR_CBBA_CHARGERS`, then
+To run one method interactively, set `CR_CBBA_MODE`, then
 open `worlds/cr-cbba.wbt`. The world uses the available Mavic 2 Pro visual model;
 the task-level battery parameters represent a DJI Mavic 3 Enterprise.
 

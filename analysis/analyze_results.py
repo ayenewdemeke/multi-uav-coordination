@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate charger-count experiments into paper metrics."""
+"""Aggregate the three-charger experiment into paper metrics."""
 import csv
 import json
 import math
@@ -9,11 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "controllers" / "uav_cbba"))
 from mission_config import (  # noqa: E402
-    MISSION_DURATION_S, RESERVE_FRACTION, TASKS as TASK_DEFINITIONS)
+    CHARGERS, MISSION_DURATION_S, RESERVE_FRACTION, TASKS as TASK_DEFINITIONS)
 
 TASKS = {task[0]: (task[1], task[5]) for task in TASK_DEFINITIONS}
 MODES = ("baseline", "proposed")
-CHARGER_COUNTS = (1, 2, 3)
 MISSION = MISSION_DURATION_S
 
 
@@ -104,14 +103,12 @@ def summarize(chargers, mode, rows):
 
 
 def main():
-    data = {(chargers, mode): load(chargers, mode)
-            for chargers in CHARGER_COUNTS for mode in MODES}
-    missing = [f"{chargers}/{mode}" for (chargers, mode), rows in data.items()
-               if not rows]
+    chargers = len(CHARGERS)
+    data = {mode: load(chargers, mode) for mode in MODES}
+    missing = [mode for mode, rows in data.items() if not rows]
     if missing:
         raise SystemExit("Missing logs for: " + ", ".join(missing))
-    summaries = [summarize(chargers, mode, data[(chargers, mode)])
-                 for chargers in CHARGER_COUNTS for mode in MODES]
+    summaries = [summarize(chargers, mode, data[mode]) for mode in MODES]
     destination = ROOT / "results" / "charger_count_metrics.csv"
     with destination.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=summaries[0].keys())

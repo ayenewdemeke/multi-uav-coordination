@@ -27,7 +27,6 @@ DESCENT_SPEED = 2.0
 # The dock surface is 0.55 m high; the Mavic model rests with its translation
 # reference approximately 0.07 m above the supporting surface.
 PAD_ALTITUDE = 0.62
-DOCK_CONNECTION_S = 5.0
 # DJI Mavic 3 Enterprise operational parameters.  Webots still uses the
 # available Mavic 2 Pro visual model; vehicle geometry does not enter the
 # task-level energy model.
@@ -39,7 +38,7 @@ TARGET_SOC = 0.90
 CHARGE_20_TO_90_S = 40.0 * 60.0
 CHARGE_RATE_SOC_PER_S = (TARGET_SOC - RESERVE_FRACTION) / CHARGE_20_TO_90_S
 MIN_OPPORTUNISTIC_CHARGE_S = 60.0
-MISSION_DURATION_S = 7200.0
+MISSION_DURATION_S = 28800.0
 
 # Begin at the operational charging target to avoid a one-off 100% transient.
 INITIAL_SOC = (TARGET_SOC,) * len(AGENTS)
