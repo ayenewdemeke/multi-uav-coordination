@@ -49,7 +49,10 @@ STANDBY_POINTS = ((16.8, 0.0), (0.0, 16.8),
 # Exponential time discount with completion time expressed in minutes.
 LAMBDA = 0.05  # min^-1
 BUNDLE_LIMIT = len(TASKS)
-EARLY_RELEASE_S = 15.0
+# Advance-release allowance (delta in III.A).  One service duration of
+# lookahead, so a UAV finishing a bundle can see the next due task
+# instead of idling until it is almost late.
+EARLY_RELEASE_S = 300.0
 QUIET_ROUNDS = 2
 # Kinematic motion reaches task coordinates exactly; this only absorbs
 # floating-point error in the arrival comparison.

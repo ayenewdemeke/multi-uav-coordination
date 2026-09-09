@@ -1211,7 +1211,11 @@ while robot.step(dt) != -1:
                 charge_complete = True
             state = "ASCENDING"
             target = (*charger_position(), CRUISE_ALTITUDE)
-        elif task_release:
+        elif charge_complete and task_release:
+            # A committed charge runs to its target first.  Departing at a
+            # partial state of charge collapses into a low-energy cycle of
+            # one task per pad visit, which never occupies a charger long
+            # enough for capacity to bind.
             enter_auction("CHARGER")
         elif (not charge_complete and battery >=
               TARGET_SOC * BATTERY_CAPACITY_J - EPSILON):
