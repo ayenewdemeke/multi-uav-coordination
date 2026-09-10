@@ -1994,7 +1994,7 @@ Solid {
   name "task area Q4 material quality"
 }
 DEF UAV1 Mavic2Pro {
-  translation 16.8 0 0.07
+  translation 0 -16.8 0.07
   rotation 0 0 1 3.14159
   name "UAV1"
   controller "uav_cbba"
@@ -2018,7 +2018,7 @@ DEF UAV1 Mavic2Pro {
   ]
 }
 DEF UAV2 Mavic2Pro {
-  translation 0 16.8 0.07
+  translation 1.5 -16.8 0.07
   rotation 0 0 1 -1.5708
   name "UAV2"
   controller "uav_cbba"
@@ -2042,7 +2042,7 @@ DEF UAV2 Mavic2Pro {
   ]
 }
 DEF UAV3 Mavic2Pro {
-  translation -16.8 0 0.07
+  translation 3 -16.8 0.07
   name "UAV3"
   controller "uav_cbba"
   supervisor TRUE
@@ -2065,9 +2065,57 @@ DEF UAV3 Mavic2Pro {
   ]
 }
 DEF UAV4 Mavic2Pro {
-  translation 0 -16.8 0.07
+  translation 4.5 -16.8 0.07
   rotation 0 0 1 1.5708
   name "UAV4"
+  controller "uav_cbba"
+  supervisor TRUE
+  physics NULL
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
+DEF UAV5 Mavic2Pro {
+  translation 6.0 -16.8 0.07
+  rotation 0 0 1 1.5708
+  name "UAV5"
+  controller "uav_cbba"
+  supervisor TRUE
+  physics NULL
+  bodySlot [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 1.0472
+      width 1280
+      height 720
+      near 0.2
+    }
+  ]
+}
+DEF UAV6 Mavic2Pro {
+  translation 7.5 -16.8 0.07
+  rotation 0 0 1 1.5708
+  name "UAV6"
   controller "uav_cbba"
   supervisor TRUE
   physics NULL
