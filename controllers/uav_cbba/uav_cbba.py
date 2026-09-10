@@ -30,6 +30,11 @@ robot = Supervisor()
 dt = int(robot.getBasicTimeStep())
 step_seconds = dt / 1000.0
 name = robot.getName()
+if name not in AGENTS:
+    # Not part of the active fleet for this run: stay parked.
+    while robot.step(dt) != -1:
+        pass
+    raise SystemExit(0)
 me = AGENTS.index(name)
 project = Path(__file__).resolve().parents[2]
 METHOD = os.environ.get("CR_CBBA_METHOD", "proposed").strip().lower()
@@ -58,7 +63,8 @@ emitter.setChannel(1)
 self_node = robot.getSelf()
 translation = self_node.getField("translation")
 
-output = project / "results" / METHOD / f"chargers_{charger_count}"
+output = (project / "results" / METHOD /
+          f"uav{len(AGENTS)}_chargers_{charger_count}")
 output.mkdir(parents=True, exist_ok=True)
 log_file = (output / f"{name}.jsonl").open("w", encoding="utf-8")
 
@@ -109,7 +115,6 @@ charger_index = None
 dock_index = None
 dock_interval = None
 standby_index = me
-opportunistic_charge = False
 deferred_charge = False
 takeoff_for_charger = False
 ground_reservation_ready_at = None
@@ -268,37 +273,38 @@ def useful_charge_time(arrival, touchdown_soc, end):
 
 
 def worthwhile_charge(opportunity, end):
-    """True when replenished energy exceeds charger-access energy."""
+    """True when replenished energy exceeds charger-access energy (III.D)."""
     arrival, touchdown_soc, _, access_energy = opportunity
     gained = (useful_charge_time(arrival, touchdown_soc, end) *
               CHARGE_RATE_SOC_PER_S * BATTERY_CAPACITY_J)
     return gained > access_energy + EPSILON
 
 
-def opportunistic_slot(position, now):
-    """Return a useful charging interval that respects future reservations."""
+def advance_charge_slot(position, now):
+    """Charging interval for a UAV between task assignments (III.D).
+
+    With reservations, the interval is trimmed to end before the next peer
+    booking on that pad, so taking it cannot displace a scheduled charge.
+    Without them, a pad can only be taken if it is free at this instant.
+    """
     opportunity = charging_opportunity(position, now)
     if opportunity is None:
         return None
     if not RESERVE_SLOTS:
-        # No lookahead: take a pad only if one is free now, and charge fully.
         port = free_pad_now()
         return ((None, port) if port is not None and
                 worthwhile_charge(opportunity, opportunity[2]) else None)
     arrival, touchdown_soc, full_end, _ = opportunity
     choices = []
     for port in range(charger_count):
-        end = full_end
         intervals = [interval for _, _, interval, _ in peer_intervals(port)]
-        conflicts = [other for other in intervals
-                     if other[0] <= arrival < other[1]]
-        if conflicts:
+        if any(other[0] <= arrival < other[1] for other in intervals):
             continue
-        end = min([end] + [other[0] for other in intervals
-                           if arrival < other[0] < end])
-        useful = useful_charge_time(arrival, touchdown_soc, end)
+        end = min([full_end] + [other[0] for other in intervals
+                                if arrival < other[0] < full_end])
         if worthwhile_charge(opportunity, end):
-            choices.append((useful, (arrival, end), port))
+            choices.append((useful_charge_time(arrival, touchdown_soc, end),
+                            (arrival, end), port))
     return max(choices)[1:] if choices else None
 
 
@@ -426,8 +432,11 @@ def route_metrics(position, candidate_path, now, include_reservation=True,
         elapsed += travel_duration(point, task[2:4])
         previous_start = (last_started[task_id]
                           if last_started[task_id] is not None else 0.0)
-        revisit_age = max(
-            1.0, (now + elapsed - previous_start) / task[5])
+        # Urgency is evaluated at the auction instant, not at the predicted
+        # arrival.  Scoring it at arrival makes a task worth more the later it
+        # is scheduled, which both inverts the intended path ordering and
+        # breaks the diminishing-marginal-gain condition CBBA assumes.
+        revisit_age = max(1.0, (now - previous_start) / task[5])
         elapsed += math.ceil(task[6] / step_seconds) * step_seconds
         score += (task[4] * revisit_age *
                   math.exp(-LAMBDA * elapsed / 60.0))
@@ -877,11 +886,10 @@ def begin_charging(now, position):
     charge_complete = False
     dock_index = charger_index
     state = "DESCENDING"
-    if not opportunistic_charge:
-        touchdown_soc = ((battery - POWER_W * descent_duration()) /
-                         BATTERY_CAPACITY_J)
-        reservation = (now, now + descent_duration() +
-                       charge_duration(touchdown_soc) + ascent_duration())
+    touchdown_soc = ((battery - POWER_W * descent_duration()) /
+                     BATTERY_CAPACITY_J)
+    reservation = (now, now + descent_duration() +
+                   charge_duration(touchdown_soc) + ascent_duration())
     dock_interval = reservation
     reservation = None
     reservation_committed = False
@@ -895,7 +903,6 @@ def fail_uav(now, reason):
     """Safely remove a UAV that cannot preserve the hard SoC reserve."""
     global state, reservation, reservation_committed, active_task
     global service_until
-    global opportunistic_charge
     global charger_index, dock_index, dock_interval, auction_origin
     if state == "FAILED":
         return
@@ -908,7 +915,6 @@ def fail_uav(now, reason):
     dock_index = None
     dock_interval = None
     auction_origin = None
-    opportunistic_charge = False
     state = "FAILED"
     log("uav_failed", now, reason=reason,
         battery_soc=battery / BATTERY_CAPACITY_J)
@@ -987,8 +993,8 @@ while robot.step(dt) != -1:
             peers[sender]["charger_index"] = message.get("charger_index")
             peers[sender]["margin"] = message.get("margin", float("inf"))
             resolve_cbba(message, now)
-            if state == "AUCTION":
-                resolve_charger(message, auction_time, position)
+            resolve_charger(
+                message, auction_time if state == "AUCTION" else now, position)
 
     # Standard CBBA release rule (Choi, Brunet, and How, 2009): losing a task
     # invalidates the marginal scores of every task bundled after it.
@@ -1035,9 +1041,11 @@ while robot.step(dt) != -1:
                     state = "TAKEOFF"
                 else:
                     state = "STANDBY"
-                    # Won nothing: resume competing for a charger slot rather
-                    # than waiting on the ground with the request cleared.
-                    if battery < TARGET_SOC * BATTERY_CAPACITY_J - EPSILON:
+                    # Won nothing: only queue for a charger if this UAV could
+                    # not serve a task anyway.  Anything below the 90% target
+                    # used to qualify, which sent UAVs to a pad with most of
+                    # their endurance unused.
+                    if not can_service_another(position, battery):
                         deferred_charge = True
                         if reservation is None:
                             takeoff_for_charger = False
@@ -1141,20 +1149,18 @@ while robot.step(dt) != -1:
         elif has_new_release(now) or newly_feasible_unowned:
             enter_auction()
         else:
-            slot = opportunistic_slot(position, now)
+            slot = advance_charge_slot(position, now)
             if slot is not None:
                 reservation, charger_index = slot
                 reservation_committed = reservation is not None
-                opportunistic_charge = RESERVE_SLOTS
-                log("opportunistic_charge_planned", now,
-                    reservation=reservation)
+                log("advance_charge_planned", now, reservation=reservation,
+                    battery_soc=battery / BATTERY_CAPACITY_J)
                 request_charger(now, position)
             else:
                 standby_index = choose_standby(position)
                 charger_retry_pending = True
                 state = "TO_STANDBY"
-                log("standby_requested", now,
-                    standby_index=standby_index)
+                log("standby_requested", now, standby_index=standby_index)
     elif state == "TO_CHARGER":
         dock = charger_position()
         target = (*dock, CRUISE_ALTITUDE)
@@ -1220,9 +1226,6 @@ while robot.step(dt) != -1:
             log("touchdown", now,
                 battery_soc=battery / BATTERY_CAPACITY_J)
             duration = charge_duration(battery / BATTERY_CAPACITY_J)
-            if opportunistic_charge:
-                duration = min(duration, max(
-                    0.0, dock_interval[1] - now - ascent_duration()))
             log("charge_start", now, until=now + duration,
                 duration_s=duration,
                 arrival_soc=battery / BATTERY_CAPACITY_J)
@@ -1262,19 +1265,10 @@ while robot.step(dt) != -1:
         if pz >= TAKEOFF_ALTITUDE_M:
             log("dock_end", now,
                 departure_soc=battery / BATTERY_CAPACITY_J)
-            was_opportunistic = opportunistic_charge
             dock_index = None
             dock_interval = None
-            opportunistic_charge = False
             if path:
                 state = "IDLE"
-            elif was_opportunistic and not has_new_release(now):
-                reservation = None
-                reservation_committed = False
-                charger_index = None
-                standby_index = choose_standby(position)
-                charger_retry_pending = True
-                state = "TO_STANDBY"
             else:
                 reservation = None
                 reservation_committed = False
@@ -1328,8 +1322,17 @@ while robot.step(dt) != -1:
                         reservation=reservation,
                         charger_index=charger_index)
             if assigned_pad_conflict():
-                invalidate_ground_reservation(now, position)
-            else:
+                replacement = feasible_reservation(
+                    position, [], now, route_metrics(position, [], now)[3])
+                if replacement is not None:
+                    reservation, charger_index = replacement
+                    ground_reservation_ready_at = (
+                        now + QUIET_ROUNDS * step_seconds)
+                    log("charger_slot_shifted", now,
+                        reservation=reservation, charger_index=charger_index)
+                else:
+                    invalidate_ground_reservation(now, position)
+            if takeoff_for_charger and not assigned_pad_conflict():
                 travel = (ascent_duration() +
                           travel_duration(position, charger_position()))
                 departure = reservation[0] - travel
@@ -1339,30 +1342,28 @@ while robot.step(dt) != -1:
                     state = "TAKEOFF"
         elif charger_retry_pending:
             charger_retry_pending = False
-            if not RESERVE_SLOTS:
-                port = free_pad_now()
-                result = (None, port) if port is not None else None
-                partial_charge = False
-            else:
-                result = opportunistic_slot(position, now)
-                partial_charge = result is not None
-                if result is None and deferred_charge:
+            result = None
+            if not deferred_charge:
+                result = advance_charge_slot(position, now)
+            elif deferred_charge:
+                if RESERVE_SLOTS:
                     preferred = route_metrics(position, [], now)[3]
                     if preferred is not None:
                         preferred = (preferred[0] + ascent_duration(),
                                      preferred[1])
                     result = feasible_reservation(position, [], now, preferred)
+                else:
+                    port = free_pad_now()
+                    result = (None, port) if port is not None else None
             if result is not None:
                 reservation, charger_index = result
-                opportunistic_charge = partial_charge
-                reservation_committed = True
+                reservation_committed = False
                 deferred_charge = False
                 takeoff_for_charger = True
                 ground_reservation_ready_at = (
                     now + QUIET_ROUNDS * step_seconds)
                 log("ground_charger_slot_acquired", now,
-                    reservation=reservation, charger_index=charger_index,
-                    opportunistic=opportunistic_charge)
+                    reservation=reservation, charger_index=charger_index)
     elif state == "FAILED":
         target = (px, py, 0.07)
     else:  # AUCTION
