@@ -32,6 +32,15 @@ step_seconds = dt / 1000.0
 name = robot.getName()
 me = AGENTS.index(name)
 project = Path(__file__).resolve().parents[2]
+METHOD = os.environ.get("CR_CBBA_METHOD", "proposed").strip().lower()
+if METHOD not in ("proposed", "battery_only"):
+    raise ValueError("method must be proposed or battery_only")
+# The ablation keeps route-energy feasibility, the hard reserve, the task
+# score, CBBA task consensus, and the full-charge commitment.  It drops only
+# the charger reservation: no slot is booked during bundle construction and no
+# reservation is negotiated.  A UAV takes a pad if one is free when it arrives,
+# and otherwise lands and waits.
+RESERVE_SLOTS = METHOD == "proposed"
 charger_count = int(os.environ.get(
     "CR_CBBA_CHARGER_COUNT", DEFAULT_CHARGER_COUNT))
 if not 1 <= charger_count <= len(CHARGERS):
@@ -49,13 +58,14 @@ emitter.setChannel(1)
 self_node = robot.getSelf()
 translation = self_node.getField("translation")
 
-output = project / "results" / f"chargers_{charger_count}"
+output = project / "results" / METHOD / f"chargers_{charger_count}"
 output.mkdir(parents=True, exist_ok=True)
 log_file = (output / f"{name}.jsonl").open("w", encoding="utf-8")
 
 
 def log(event, now, **fields):
-    fields.update(event=event, time=round(now, 3), agent=name)
+    fields.update(event=event, time=round(now, 3), agent=name,
+                  method=METHOD)
     log_file.write(json.dumps(fields, separators=(",", ":")) + "\n")
     log_file.flush()
 
@@ -229,6 +239,15 @@ def charger_distance_bound(position):
     return max(distance(position, dock) for dock in CHARGERS[:charger_count])
 
 
+def free_pad_now():
+    """A pad no peer occupies or is currently flying to (ablation only)."""
+    taken = {peer_charger_index(peer) for index, peer in enumerate(peers)
+             if index != me and (peer_occupies_charger(peer) or
+                                 peer["state"] == "TO_CHARGER")}
+    return next((index for index in range(charger_count)
+                 if index not in taken), None)
+
+
 def charging_opportunity(position, now):
     """Return timing, touchdown SoC, and charger-access energy."""
     _, required, arrival, _ = route_metrics(
@@ -261,6 +280,11 @@ def opportunistic_slot(position, now):
     opportunity = charging_opportunity(position, now)
     if opportunity is None:
         return None
+    if not RESERVE_SLOTS:
+        # No lookahead: take a pad only if one is free now, and charge fully.
+        port = free_pad_now()
+        return ((None, port) if port is not None and
+                worthwhile_charge(opportunity, opportunity[2]) else None)
     arrival, touchdown_soc, full_end, _ = opportunity
     choices = []
     for port in range(charger_count):
@@ -465,6 +489,8 @@ def needs_charge_after(position, candidate_path):
 
 
 def planned_reservation(position, candidate_path, now):
+    if not RESERVE_SLOTS:
+        return None
     if not candidate_path or not needs_charge_after(position, candidate_path):
         return None
     return route_metrics(position, candidate_path, now)[3]
@@ -689,7 +715,7 @@ def resolve_charger(message, now, position):
     remote_committed = message.get(
         "reservation_committed",
         peers[message["agent"]]["reservation_committed"])
-    if reservation_committed or reservation is None:
+    if not RESERVE_SLOTS or reservation_committed or reservation is None:
         return
     my_margin = planning_battery() - reservation_energy(
         position, path, now, reservation)
@@ -787,12 +813,17 @@ def request_charger(now, position):
     global takeoff_for_charger, charger_retry_pending
     release_bundle(clear_reservation=False)
     if reservation is None:
-        preferred = route_metrics(position, [], now)[3]
-        result = feasible_reservation(position, [], now, preferred)
-        reservation, charger_index = (result if result is not None
-                                      else (None, None))
-        reservation_committed = reservation is not None
-        if reservation is None:
+        if RESERVE_SLOTS:
+            preferred = route_metrics(position, [], now)[3]
+            result = feasible_reservation(position, [], now, preferred)
+            reservation, charger_index = (result if result is not None
+                                          else (None, None))
+            reservation_committed = reservation is not None
+            acquired = reservation is not None
+        else:
+            charger_index = free_pad_now()
+            acquired = charger_index is not None
+        if not acquired:
             standby_index = safe_charging_standby(
                 position, gps.getValues()[2])
             if standby_index is None:
@@ -1113,8 +1144,8 @@ while robot.step(dt) != -1:
             slot = opportunistic_slot(position, now)
             if slot is not None:
                 reservation, charger_index = slot
-                reservation_committed = True
-                opportunistic_charge = True
+                reservation_committed = reservation is not None
+                opportunistic_charge = RESERVE_SLOTS
                 log("opportunistic_charge_planned", now,
                     reservation=reservation)
                 request_charger(now, position)
@@ -1278,6 +1309,10 @@ while robot.step(dt) != -1:
             log("standby_departure", now, standby_index=standby_index,
                 battery_soc=battery / BATTERY_CAPACITY_J)
             enter_auction("GROUND")
+        elif takeoff_for_charger and not RESERVE_SLOTS:
+            if now >= (ground_reservation_ready_at or now):
+                standby_index = None
+                state = "TAKEOFF"
         elif takeoff_for_charger:
             if charger_retry_pending:
                 charger_retry_pending = False
@@ -1304,14 +1339,19 @@ while robot.step(dt) != -1:
                     state = "TAKEOFF"
         elif charger_retry_pending:
             charger_retry_pending = False
-            result = opportunistic_slot(position, now)
-            partial_charge = result is not None
-            if result is None and deferred_charge:
-                preferred = route_metrics(position, [], now)[3]
-                if preferred is not None:
-                    preferred = (preferred[0] + ascent_duration(),
-                                 preferred[1])
-                result = feasible_reservation(position, [], now, preferred)
+            if not RESERVE_SLOTS:
+                port = free_pad_now()
+                result = (None, port) if port is not None else None
+                partial_charge = False
+            else:
+                result = opportunistic_slot(position, now)
+                partial_charge = result is not None
+                if result is None and deferred_charge:
+                    preferred = route_metrics(position, [], now)[3]
+                    if preferred is not None:
+                        preferred = (preferred[0] + ascent_duration(),
+                                     preferred[1])
+                    result = feasible_reservation(position, [], now, preferred)
             if result is not None:
                 reservation, charger_index = result
                 opportunistic_charge = partial_charge

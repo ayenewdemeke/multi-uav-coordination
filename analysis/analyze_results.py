@@ -15,9 +15,12 @@ TASKS = {task[0]: (task[1], task[5]) for task in TASK_DEFINITIONS}
 MISSION = MISSION_DURATION_S
 
 
-def load(chargers):
+METHODS = ("proposed", "battery_only")
+
+
+def load(method, chargers):
     rows = []
-    folder = ROOT / "results" / f"chargers_{chargers}"
+    folder = ROOT / "results" / method / f"chargers_{chargers}"
     for path in sorted(folder.glob("UAV*.jsonl")):
         rows.extend(json.loads(line) for line in path.read_text().splitlines()
                     if line)
@@ -43,7 +46,7 @@ def charging_seconds(rows):
     return total + sum(max(0.0, MISSION - start) for start in starts.values())
 
 
-def summarize(chargers, rows):
+def summarize(method, chargers, rows):
     starts = task_events(rows, "task_start")
     completions = task_events(rows, "task_complete")
     violations = {"Safety": 0, "Quality": 0}
@@ -56,7 +59,7 @@ def summarize(chargers, rows):
     ends = [row for row in rows if row["event"] == "mission_end"]
     if len(ends) != len(AGENTS):
         raise ValueError(
-            f"Incomplete {chargers}-charger run: "
+            f"Incomplete {method} {chargers}-charger run: "
             f"{len(ends)}/{len(AGENTS)} UAVs reached mission end")
     cycles = [row["rounds"] for row in rows
               if row["event"] == "allocation_converged" and
@@ -75,6 +78,7 @@ def summarize(chargers, rows):
     lateness = [max(0.0, row["time"] - row["deadline"]) for row in rows
                 if row["event"] == "task_start"]
     return {
+        "method": method,
         "chargers": chargers,
         "failed_uavs": len(failed),
         # Constraint (5) is enforced during allocation, so a physical pad
@@ -112,13 +116,14 @@ def summarize(chargers, rows):
 
 def main():
     counts = range(1, len(CHARGERS) + 1)
-    data = {chargers: load(chargers) for chargers in counts}
-    missing = [f"{chargers} charger(s)"
-               for chargers, rows in data.items() if not rows]
+    data = {(method, chargers): load(method, chargers)
+            for method in METHODS for chargers in counts}
+    missing = [f"{method} {chargers} charger(s)"
+               for (method, chargers), rows in data.items() if not rows]
     if missing:
         raise SystemExit("Missing logs for: " + ", ".join(missing))
-    summaries = [summarize(chargers, data[chargers])
-                 for chargers in counts]
+    summaries = [summarize(method, chargers, data[method, chargers])
+                 for method in METHODS for chargers in counts]
     destination = ROOT / "results" / "charger_count_metrics.csv"
     with destination.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=summaries[0].keys())
