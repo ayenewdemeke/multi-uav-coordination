@@ -1,157 +1,194 @@
 #!/usr/bin/env python3
-"""Aggregate the charger-count ablation into paper metrics."""
+"""Aggregate the fleet-size and charger-count ablation into paper metrics.
+
+Every result set is checked for physical consistency before any metric is
+reported; a failure here means the run is unusable, not that a metric is low.
+"""
 import csv
+import itertools
 import json
-import math
+import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "controllers" / "uav_cbba"))
 from mission_config import (  # noqa: E402
-    CHARGERS, MISSION_DURATION_S, TASKS as TASK_DEFINITIONS)
+    CHARGERS, MISSION_DURATION_S, ROSTER, TASKS as TASK_DEFINITIONS)
 
-TASKS = {task[0]: (task[1], task[5]) for task in TASK_DEFINITIONS}
-MISSION = MISSION_DURATION_S
-
-
+KIND = {task[0]: task[1] for task in TASK_DEFINITIONS}
 METHODS = ("proposed", "battery_only")
-
-
 FLEET_SIZES = (3, 4, 5, 6)
-CHARGER_COUNTS = (1, 2, 3, 4)
+CHARGER_COUNTS = tuple(range(1, len(CHARGERS) + 1))
 
-
-def load(method, uavs, chargers):
-    rows = []
-    folder = ROOT / "results" / method / f"uav{uavs}_chargers_{chargers}"
-    for path in sorted(folder.glob("UAV*.jsonl")):
-        rows.extend(json.loads(line) for line in path.read_text().splitlines()
-                    if line)
-    return sorted(rows, key=lambda row: (row["time"], row["agent"]))
-
-
-def task_events(rows, event):
-    result = {task: [] for task in TASKS}
-    for row in rows:
-        if row["event"] == event:
-            result[row["task"]].append(row["time"])
-    return result
-
-
-# A dock attempt that finds the pad taken aborts without a dock_end.  Closing
-# those at the mission horizon counts an aborted approach as a full occupancy
-# and can push reported utilization above 100%.
+# A dock attempt that finds the resource taken aborts without a dock_end.
 ABORTED_DOCK = {"charger_conflict", "charger_deferred_to_ground",
                 "standby_landed", "charger_request", "uav_failed"}
 
 
-def charging_seconds(rows):
-    starts, total = {}, 0.0
+def load(method, uavs, chargers):
+    folder = ROOT / "results" / method / f"uav{uavs}_chargers_{chargers}"
+    rows = []
+    for path in sorted(folder.glob("UAV*.jsonl")):
+        rows.extend(json.loads(line) for line in path.read_text().splitlines()
+                    if line.strip())
+    return sorted(rows, key=lambda row: (row["time"], row["agent"]))
+
+
+def dock_sessions(rows, horizon):
+    """(resource, start, end, agent) for every completed occupancy."""
+    sessions, open_docks = [], {}
+    for row in rows:
+        agent, event = row["agent"], row["event"]
+        if event == "dock_start":
+            open_docks[agent] = (row["time"], row.get("charger_index"))
+        elif agent in open_docks and (event == "dock_end"
+                                      or event in ABORTED_DOCK):
+            start, pad = open_docks.pop(agent)
+            if row["time"] - start > 0.05:
+                sessions.append((pad, start, row["time"], agent))
+    for agent, (start, pad) in open_docks.items():
+        sessions.append((pad, start, horizon, agent))
+    return sessions
+
+
+def check(method, uavs, chargers, rows, horizon):
+    """Physical-consistency gate.  Returns a list of violations."""
+    tag = f"{method} uav{uavs}/ch{chargers}"
+    bad = []
+    agents = {row["agent"] for row in rows}
+    if len(agents) != uavs:
+        bad.append(f"{tag}: {len(agents)} UAVs logged, expected {uavs}")
+    ends = [r for r in rows if r["event"] == "mission_end"]
+    if len(ends) != uavs:
+        bad.append(f"{tag}: {len(ends)}/{uavs} UAVs reached mission end")
+    sessions = dock_sessions(rows, horizon)
+    for a, b in itertools.combinations(sessions, 2):
+        if a[0] == b[0] and a[1] < b[2] and b[1] < a[2]:
+            bad.append(f"{tag}: resource {a[0]} held by {a[3]} and {b[3]} "
+                       f"simultaneously")
+    for pad in {p for p, _, _, _ in sessions}:
+        busy = sum(e - s for p, s, e, _ in sessions if p == pad)
+        if busy > horizon + 1.0:
+            bad.append(f"{tag}: resource {pad} occupied beyond the horizon")
+    for row in rows:
+        for key in ("battery_soc", "arrival_soc", "departure_soc"):
+            if key in row and row[key] < 0.20 - 1e-6:
+                bad.append(f"{tag}: {row['agent']} {key}={row[key]:.3f} "
+                           f"below the prescribed reserve")
+    starts = sum(1 for r in rows if r["event"] == "task_start")
+    completes = sum(1 for r in rows if r["event"] == "task_complete")
+    if completes > starts:
+        bad.append(f"{tag}: {completes} completions from {starts} starts")
+    return bad
+
+
+def summarize(method, uavs, chargers, rows, horizon):
+    starts = {task: [] for task in KIND}
+    for row in rows:
+        if row["event"] == "task_start":
+            starts[row["task"]].append(row["time"])
+
+    # Revisit latency: elapsed time between consecutive services of a
+    # location, including mission start to first visit and last visit to the
+    # horizon.
+    gaps = {"Safety": [], "Quality": []}
+    for task, kind in KIND.items():
+        previous = 0.0
+        for current in starts[task] + [horizon]:
+            gaps[kind].append(current - previous)
+            previous = current
+    every = gaps["Safety"] + gaps["Quality"]
+
+    events = {}
+    for row in rows:
+        events[row["event"]] = events.get(row["event"], 0) + 1
+    ends = [r for r in rows if r["event"] == "mission_end"]
+    rounds = [r["rounds"] for r in rows
+              if r["event"] == "allocation_converged" and not r.get("forced")]
+    sessions = dock_sessions(rows, horizon)
+    occupancy = sum(e - s for _, s, e, _ in sessions)
+    arrivals = [r["arrival_soc"] for r in rows if r["event"] == "charge_start"]
+    minimum_soc = min((r[k] for r in rows
+                       for k in ("battery_soc", "arrival_soc", "departure_soc")
+                       if k in r), default=1.0)
+
+    # Waiting attributable to charger unavailability.
+    wanted, waits = {}, []
     for row in rows:
         agent = row["agent"]
-        if row["event"] == "dock_start":
-            starts[agent] = row["time"]
-        elif agent in starts and (row["event"] == "dock_end" or
-                                  row["event"] in ABORTED_DOCK):
-            total += row["time"] - starts.pop(agent)
-    return total + sum(max(0.0, MISSION - start) for start in starts.values())
+        if row["event"] == "charger_deferred_to_ground":
+            wanted[agent] = row["time"]
+        elif row["event"] == "charge_start" and agent in wanted:
+            waits.append((row["time"] - wanted.pop(agent)) / 60.0)
 
+    completed = {kind: sum(1 for r in rows if r["event"] == "task_complete"
+                           and KIND[r["task"]] == kind)
+                 for kind in ("Safety", "Quality")}
 
-def summarize(method, uavs, chargers, rows):
-    starts = task_events(rows, "task_start")
-    completions = task_events(rows, "task_complete")
-    violations = {"Safety": 0, "Quality": 0}
-    for task, (kind, revisit) in TASKS.items():
-        previous = 0.0
-        for current in starts[task] + [MISSION]:
-            violations[kind] += max(
-                0, math.ceil((current - previous) / revisit) - 1)
-            previous = current
-    ends = [row for row in rows if row["event"] == "mission_end"]
-    if len(ends) != uavs:
-        raise ValueError(
-            f"Incomplete {method} uav{uavs}/ch{chargers} run: "
-            f"{len(ends)}/{uavs} UAVs reached mission end")
-    cycles = [row["rounds"] for row in rows
-              if row["event"] == "allocation_converged" and
-              not row.get("forced", False)]
-    completed = {
-        kind: sum(len(completions[task])
-                  for task, (task_kind, _) in TASKS.items()
-                  if task_kind == kind)
-        for kind in ("Safety", "Quality")
-    }
-    used_seconds = charging_seconds(rows)
-    failed = {row["agent"] for row in rows if row["event"] == "uav_failed"}
-    # Lateness is reported per service start.  The unnormalized sum rewards
-    # configurations that serve fewer tasks, because a task that is never
-    # started contributes no lateness at all.
-    lateness = [max(0.0, row["time"] - row["deadline"]) for row in rows
-                if row["event"] == "task_start"]
     return {
         "method": method,
         "uavs": uavs,
         "chargers": chargers,
-        "failed_uavs": len(failed),
-        # Constraint (5) is enforced during allocation, so a physical pad
-        # collision at execution time is a violation, not a routine event.
-        # A UAV that wanted a pad and none was available, or that flew to one
-        # and found it occupied.  Dropping an uncommitted proposal during
-        # consensus is renegotiation, not a denial of access, and is reported
-        # separately.
-        "access_conflicts": sum(
-            row["event"] in ("charger_conflict",
-                             "charger_deferred_to_ground")
-            for row in rows),
-        "charger_waiting_s": round(sum(
-            row.get("duration_s", 0.0) for row in rows
-            if row["event"] == "charger_wait_end"), 3),
-        "safety_revisit_violations": violations["Safety"],
-        "quality_revisit_violations": violations["Quality"],
-        "total_revisit_violations": sum(violations.values()),
-        "mean_start_lateness_s": round(
-            sum(lateness) / len(lateness), 3) if lateness else 0.0,
-        "late_start_fraction": round(
-            sum(value > 0.0 for value in lateness) / len(lateness),
-            4) if lateness else 0.0,
-        "cumulative_start_lateness_s": round(sum(lateness), 3),
-        "completed_safety_services": completed["Safety"],
-        "completed_quality_services": completed["Quality"],
-        "completed_services": sum(completed.values()),
-        "charging_events": sum(row["event"] == "charge_start" for row in rows),
+        "services": events.get("task_complete", 0),
+        "safety_services": completed["Safety"],
+        "quality_services": completed["Quality"],
+        "mean_latency_s": round(sum(every) / len(every), 1),
+        "max_latency_s": round(max(every), 1),
+        "safety_latency_s": round(sum(gaps["Safety"]) / len(gaps["Safety"]), 1),
+        "quality_latency_s": round(
+            sum(gaps["Quality"]) / len(gaps["Quality"]), 1),
+        # A UAV that required a charging resource and could not obtain one, or
+        # that reached one and found it occupied.
+        "access_conflicts": (events.get("charger_deferred_to_ground", 0)
+                             + events.get("charger_conflict", 0)),
+        "wait_for_resource_min": round(sum(waits), 1),
+        "charging_events": events.get("charge_start", 0),
         "charger_utilization_pct": round(
-            100.0 * used_seconds / (chargers * MISSION), 3),
-        "slot_renegotiations": sum(
-            row["event"] in ("charger_slot_shifted",
-                             "ground_charger_slot_invalidated")
-            for row in rows),
-        "reservation_shifts": sum(
-            row["event"] == "charger_slot_shifted" for row in rows),
-        "forced_auction_exits": sum(
-            row["event"] == "allocation_converged" and row.get("forced", False)
-            for row in rows),
-        "mean_converged_allocation_rounds": round(
-            sum(cycles) / len(cycles), 3) if cycles else 0.0,
-        "communication_messages": sum(row.get("messages", 0) for row in ends),
+            100.0 * occupancy / (chargers * horizon), 1),
+        "mean_arrival_soc_pct": round(
+            100.0 * sum(arrivals) / len(arrivals), 1) if arrivals else 0.0,
+        "minimum_soc_pct": round(100.0 * minimum_soc, 1),
+        "depleted_uavs": len({r["agent"] for r in rows
+                              if r["event"] == "uav_failed"}),
+        "mean_allocation_rounds": round(
+            sum(rounds) / len(rounds), 2) if rounds else 0.0,
+        "unconverged_auctions": sum(
+            1 for r in rows
+            if r["event"] == "allocation_converged" and r.get("forced")),
+        "messages": sum(r.get("messages", 0) for r in ends),
     }
 
 
 def main():
+    horizon = float(os.environ.get("CR_CBBA_MISSION_DURATION",
+                                   MISSION_DURATION_S))
     cells = [(m, u, c) for m in METHODS
              for u in FLEET_SIZES for c in CHARGER_COUNTS]
     data = {cell: load(*cell) for cell in cells}
     present = [cell for cell in cells if data[cell]]
     if not present:
         raise SystemExit("No result logs found under results/")
-    summaries = [summarize(m, u, c, data[m, u, c]) for m, u, c in present]
-    destination = ROOT / "results" / "charger_count_metrics.csv"
+
+    problems = []
+    for cell in present:
+        problems.extend(check(*cell, data[cell], horizon))
+    if problems:
+        print("CONSISTENCY FAILURES:")
+        for item in problems:
+            print("  " + item)
+        raise SystemExit(1)
+    print(f"consistency checks pass for {len(present)} runs "
+          f"(horizon {horizon/3600:.2f} h)")
+
+    summaries = [summarize(*cell, data[cell], horizon) for cell in present]
+    destination = ROOT / "results" / "ablation_metrics.csv"
     with destination.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=summaries[0].keys())
         writer.writeheader()
         writer.writerows(summaries)
-    for row in summaries:
-        print(json.dumps(row, indent=2))
+    print("wrote", destination.relative_to(ROOT))
+    return summaries
 
 
 if __name__ == "__main__":

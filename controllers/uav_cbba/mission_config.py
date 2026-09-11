@@ -10,20 +10,16 @@ if not 1 <= UAV_COUNT <= len(ROSTER):
     raise ValueError("UAV count must be between 1 and %d" % len(ROSTER))
 AGENTS = ROSTER[:UAV_COUNT]
 
-# name, type, x, y, priority, revisit interval, service duration
+# name, type, x, y, priority, service duration
 TASKS = (
-    ("S1", "Safety", -8.0, -18.0, 2, 900.0, 300.0),
-    ("S2", "Safety", -15.0, 10.0, 2, 900.0, 300.0),
-    ("S3", "Safety", 17.0, 17.0, 2, 900.0, 300.0),
-    ("S4", "Safety", -22.0, -4.0, 2, 900.0, 300.0),
-    ("S5", "Safety", -18.0, 18.0, 2, 900.0, 300.0),
-    ("S6", "Safety", 10.0, -20.0, 2, 900.0, 300.0),
-    ("Q1", "Quality", -4.0, -4.0, 1, 1500.0, 300.0),
-    ("Q2", "Quality", 6.2, 0.0, 1, 1500.0, 300.0),
-    ("Q3", "Quality", 20.0, -7.0, 1, 1500.0, 300.0),
-    ("Q4", "Quality", 8.0, 11.0, 1, 1500.0, 300.0),
-    ("Q5", "Quality", -10.0, 6.0, 1, 1500.0, 300.0),
-    ("Q6", "Quality", 18.0, 4.0, 1, 1500.0, 300.0),
+    ("S1", "Safety", -8.0, -18.0, 2, 300.0),
+    ("S2", "Safety", -15.0, 10.0, 2, 300.0),
+    ("S3", "Safety", 17.0, 17.0, 2, 300.0),
+    ("S4", "Safety", -22.0, -4.0, 2, 300.0),
+    ("Q1", "Quality", -4.0, -4.0, 1, 300.0),
+    ("Q2", "Quality", 6.2, 0.0, 1, 300.0),
+    ("Q3", "Quality", 20.0, -7.0, 1, 300.0),
+    ("Q4", "Quality", 8.0, 11.0, 1, 300.0),
 )
 
 # Each dock is 1.4 m wide. The assumed 1 m clear gap therefore gives 2.4 m
@@ -67,10 +63,6 @@ STANDBY_POINTS = tuple(
 # Exponential time discount with completion time expressed in minutes.
 LAMBDA = 0.05  # min^-1
 BUNDLE_LIMIT = len(TASKS)
-# Advance-release allowance (delta in III.A).  One service duration of
-# lookahead, so a UAV finishing a bundle can see the next due task
-# instead of idling until it is almost late.
-EARLY_RELEASE_S = 300.0
 QUIET_ROUNDS = 2
 # Kinematic motion reaches task coordinates exactly; this only absorbs
 # floating-point error in the arrival comparison.

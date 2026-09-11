@@ -92,7 +92,7 @@ z = [None] * N_TASKS
 s = [0.0] * len(AGENTS)
 
 battery = INITIAL_SOC[me] * BATTERY_CAPACITY_J
-last_started = [None] * N_TASKS
+visits = [0] * N_TASKS   # completed service count, drives round robin
 peers = [{"state": "UNKNOWN", "active": None, "bundle": [],
           "reservation": None, "bundle_committed": False,
           "reservation_committed": False, "charger_index": None,
@@ -430,16 +430,8 @@ def route_metrics(position, candidate_path, now, include_reservation=True,
     for task_id in candidate_path:
         task = TASKS[task_id]
         elapsed += travel_duration(point, task[2:4])
-        previous_start = (last_started[task_id]
-                          if last_started[task_id] is not None else 0.0)
-        # Urgency is evaluated at the auction instant, not at the predicted
-        # arrival.  Scoring it at arrival makes a task worth more the later it
-        # is scheduled, which both inverts the intended path ordering and
-        # breaks the diminishing-marginal-gain condition CBBA assumes.
-        revisit_age = max(1.0, (now - previous_start) / task[5])
-        elapsed += math.ceil(task[6] / step_seconds) * step_seconds
-        score += (task[4] * revisit_age *
-                  math.exp(-LAMBDA * elapsed / 60.0))
+        elapsed += math.ceil(task[5] / step_seconds) * step_seconds
+        score += task[4] * math.exp(-LAMBDA * elapsed / 60.0)
         point = task[2:4]
     elapsed += controller_duration(
         charger_distance_bound(point) / CRUISE_SPEED)
@@ -475,7 +467,7 @@ def route_end(position, candidate_path):
     for task_id in candidate_path:
         task = TASKS[task_id]
         elapsed += (travel_duration(point, task[2:4]) +
-                    math.ceil(task[6] / step_seconds) * step_seconds)
+                    math.ceil(task[5] / step_seconds) * step_seconds)
         point = task[2:4]
     return point, elapsed
 
@@ -483,7 +475,7 @@ def route_end(position, candidate_path):
 def can_service_another(position, available_energy):
     reserve = RESERVE_FRACTION * BATTERY_CAPACITY_J
     return any(POWER_W * (travel_duration(position, task[2:4]) +
-                          math.ceil(task[6] / step_seconds) * step_seconds +
+                          math.ceil(task[5] / step_seconds) * step_seconds +
                           controller_duration(charger_distance_bound(
                               task[2:4]) / CRUISE_SPEED) +
                           descent_duration()) +
@@ -505,40 +497,30 @@ def planned_reservation(position, candidate_path, now):
     return route_metrics(position, candidate_path, now)[3]
 
 
-def release_time(task_id):
-    if last_started[task_id] is None:
-        return 0.0
-    return deadline(task_id) - EARLY_RELEASE_S
-
-
-def deadline(task_id):
-    started = last_started[task_id]
-    return TASKS[task_id][5] if started is None else started + TASKS[task_id][5]
-
-
 def due_tasks(now):
     executing = {peer["active"] for index, peer in enumerate(peers)
                  if index != me and peer["active"] is not None}
+    fewest = min(visits)
     return [task_id for task_id, task in enumerate(TASKS)
-            if now >= release_time(task_id) and task_id != active_task
+            if visits[task_id] <= fewest and task_id != active_task
             and task_id not in executing]
 
 
 def has_new_release(now):
-    return any((task_id, last_started[task_id]) not in auctioned_releases
+    return any((task_id, visits[task_id]) not in auctioned_releases
                for task_id in due_tasks(now))
 
 
 def has_feasible_new_release(position, now):
     return any(
-        (task_id, last_started[task_id]) not in auctioned_releases and
+        (task_id, visits[task_id]) not in auctioned_releases and
         best_insertion(position, task_id, now) is not None
         for task_id in due_tasks(now))
 
 
 def feasible_unowned_releases(position, now):
     """Released task generations that this UAV can presently accept."""
-    return {(task_id, last_started[task_id]) for task_id in due_tasks(now)
+    return {(task_id, visits[task_id]) for task_id in due_tasks(now)
             if z[task_id] in (None, me) and
             best_insertion(position, task_id, now) is not None}
 
@@ -976,11 +958,9 @@ while robot.step(dt) != -1:
             current_charger_state = charger_status(peers[sender])
             if current_charger_state != previous_charger_state:
                 charger_retry_pending = True
-            for task_id, started_at in enumerate(message["last_started"]):
-                if (started_at is not None and
-                        (last_started[task_id] is None or
-                         started_at > last_started[task_id])):
-                    last_started[task_id] = started_at
+            for task_id, seen in enumerate(message["visits"]):
+                if seen > visits[task_id]:
+                    visits[task_id] = seen
                     if task_id != active_task and (
                             y[task_id], z[task_id]) != (0.0, None):
                         y[task_id], z[task_id] = 0.0, None
@@ -1026,7 +1006,7 @@ while robot.step(dt) != -1:
             # Record every release considered by this auction so the same
             # unchanged task generation does not immediately reopen it.
             auctioned_releases.update(
-                (task_id, last_started[task_id])
+                (task_id, visits[task_id])
                 for task_id in due_tasks(auction_time))
             log("allocation_converged", now,
                 rounds=auction_rounds, forced=forced,
@@ -1127,12 +1107,11 @@ while robot.step(dt) != -1:
         task = TASKS[active_task]
         target = (task[2], task[3], CRUISE_ALTITUDE)
         if distance(position, task[2:4]) <= ARRIVAL_RADIUS_M:
-            task_deadline = deadline(active_task)
-            last_started[active_task] = now
+            visits[active_task] += 1
             state = "SERVICE"
-            service_until = now + task[6]
-            log("task_start", now, task=task[0], duration_s=task[6],
-                deadline=task_deadline, late=now > task_deadline)
+            service_until = now + task[5]
+            log("task_start", now, task=task[0], duration_s=task[5],
+                visit=visits[active_task])
     elif state == "IDLE":
         if path:
             task_id = path[0]
@@ -1382,7 +1361,7 @@ while robot.step(dt) != -1:
                           dock_interval=dock_interval,
                           dock_index=dock_index,
                           standby_index=standby_index,
-                          last_started=last_started)
+                          visits=visits)
     status_signature = json.dumps(status_payload, sort_keys=True)
     if status_signature != last_status_payload:
         last_status_payload = status_signature
