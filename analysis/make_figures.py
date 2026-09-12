@@ -33,6 +33,7 @@ plt.rcParams.update({
     "savefig.dpi": 400,
     "savefig.bbox": "tight",
     "savefig.pad_inches": 0.02,
+    "hatch.linewidth": 0.3,
 })
 
 FLEETS = (3, 4, 5, 6)
@@ -41,6 +42,9 @@ STYLE = {"proposed": "-", "battery_only": "--"}
 # Palette taken from Figs. 1 and 2: muted blue, green, tan and charcoal.
 LINE = {3: "#2E5E8A", 4: "#4E8C6A", 5: "#C4913F", 6: "#444444"}
 FILL = {3: "#DCE7F4", 4: "#D0E3D7", 5: "#EEDEC3", 6: "#E1E1E1"}
+# Bars are separated by hatch as well as by fill, so the figure survives
+# greyscale reproduction.
+HATCH = {3: "/////", 4: "\\\\\\\\\\", 5: "xxxxx", 6: "....."}
 
 
 def load():
@@ -60,6 +64,23 @@ def series(rows, method, uavs, field):
     return [r["chargers"] for r in sel], [r[field] for r in sel]
 
 
+def panel_labels(fig, axes):
+    """Place (a), (b) centred below each panel, as IEEE figures require.
+
+    The label is positioned from the rendered extent of each axes and its
+    decorations, so it clears tick labels and axis titles whether or not the
+    panel carries them.
+    """
+    fig.canvas.draw()
+    transform = fig.transFigure.inverted()
+    for ax, tag in zip(axes, ("(a)", "(b)")):
+        extent = ax.get_tightbbox(fig.canvas.get_renderer())
+        left, bottom = transform.transform((extent.x0, extent.y0))
+        right, _ = transform.transform((extent.x1, extent.y1))
+        fig.text((left + right) / 2.0, bottom - 0.018, tag,
+                 ha="center", va="top")
+
+
 def fig_service_and_latency(rows):
     """Throughput and revisit latency of the proposed method."""
     fig, axes = plt.subplots(2, 1, figsize=(3.4, 4.2), sharex=True)
@@ -76,9 +97,8 @@ def fig_service_and_latency(rows):
     axes[1].set_ylabel("Mean revisit latency (min)")
     axes[1].set_xticks(list(range(1, 5)))
     axes[0].legend(frameon=False, ncol=2)
-    for ax, tag in zip(axes, ("(a)", "(b)")):
-        ax.text(0.0, 1.02, tag, transform=ax.transAxes, va="bottom")
-    fig.tight_layout()
+    fig.tight_layout(h_pad=2.0)
+    panel_labels(fig, axes)
     fig.savefig(OUT / "fig_service_latency.pdf")
     fig.savefig(OUT / "fig_service_latency.png")
     plt.close(fig)
@@ -111,7 +131,7 @@ def fig_conflicts(rows):
         x, y = series(rows, "battery_only", uavs, "access_conflicts")
         ax.bar([xi + offsets[uavs] * width for xi in x], y, width,
                color=FILL[uavs], edgecolor="black", linewidth=0.5,
-               label=f"{uavs} UAVs")
+               hatch=HATCH[uavs], label=f"{uavs} UAVs")
     xs, ys = [], []
     for uavs in FLEETS:
         x, y = series(rows, "proposed", uavs, "access_conflicts")
@@ -122,9 +142,10 @@ def fig_conflicts(rows):
     ax.set_xlabel("Charging resources")
     ax.set_ylabel("Access conflicts")
     ax.set_xticks(list(range(1, 5)))
-    ax.set_yticks(list(range(0, 21, 4)))
-    ax.set_ylim(0, 20)
-    ax.legend(frameon=False, ncol=2, fontsize=6, loc="upper right")
+    ax.set_yticks(list(range(0, 61, 10)))
+    ax.set_ylim(0, 78)
+    ax.legend(frameon=False, ncol=2, fontsize=6, loc="upper right",
+              handlelength=1.6, columnspacing=1.0)
     fig.tight_layout()
     fig.savefig(OUT / "fig_conflicts.pdf")
     fig.savefig(OUT / "fig_conflicts.png")
@@ -144,11 +165,11 @@ def fig_convergence(rows):
     axes[0].set_ylabel("Mean rounds to convergence")
     axes[1].set_xlabel("Charging resources")
     axes[1].set_ylabel("Coordination messages")
-    for ax, tag in zip(axes, ("(a)", "(b)")):
+    for ax in axes:
         ax.set_xticks(list(range(1, 5)))
-        ax.text(0.0, 1.02, tag, transform=ax.transAxes, va="bottom")
     axes[0].legend(frameon=False, ncol=2)
-    fig.tight_layout()
+    fig.tight_layout(h_pad=2.0)
+    panel_labels(fig, axes)
     fig.savefig(OUT / "fig_convergence.pdf")
     fig.savefig(OUT / "fig_convergence.png")
     plt.close(fig)

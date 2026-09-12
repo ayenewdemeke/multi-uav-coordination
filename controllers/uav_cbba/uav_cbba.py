@@ -253,61 +253,6 @@ def free_pad_now():
                  if index not in taken), None)
 
 
-def charging_opportunity(position, now):
-    """Return timing, touchdown SoC, and charger-access energy."""
-    _, required, arrival, _ = route_metrics(
-        position, [], now, include_reservation=False)
-    if required > battery:
-        return None
-    route_energy = required - RESERVE_FRACTION * BATTERY_CAPACITY_J
-    touchdown_soc = (battery - route_energy) / BATTERY_CAPACITY_J
-    end = min(mission_duration, arrival + descent_duration() +
-              charge_duration(touchdown_soc) + ascent_duration())
-    access_energy = route_energy + POWER_W * ascent_duration()
-    return arrival, touchdown_soc, end, access_energy
-
-
-def useful_charge_time(arrival, touchdown_soc, end):
-    available = end - arrival - descent_duration() - ascent_duration()
-    return min(available, charge_duration(touchdown_soc))
-
-
-def worthwhile_charge(opportunity, end):
-    """True when replenished energy exceeds charger-access energy (III.D)."""
-    arrival, touchdown_soc, _, access_energy = opportunity
-    gained = (useful_charge_time(arrival, touchdown_soc, end) *
-              CHARGE_RATE_SOC_PER_S * BATTERY_CAPACITY_J)
-    return gained > access_energy + EPSILON
-
-
-def advance_charge_slot(position, now):
-    """Charging interval for a UAV between task assignments (III.D).
-
-    With reservations, the interval is trimmed to end before the next peer
-    booking on that pad, so taking it cannot displace a scheduled charge.
-    Without them, a pad can only be taken if it is free at this instant.
-    """
-    opportunity = charging_opportunity(position, now)
-    if opportunity is None:
-        return None
-    if not RESERVE_SLOTS:
-        port = free_pad_now()
-        return ((None, port) if port is not None and
-                worthwhile_charge(opportunity, opportunity[2]) else None)
-    arrival, touchdown_soc, full_end, _ = opportunity
-    choices = []
-    for port in range(charger_count):
-        intervals = [interval for _, _, interval, _ in peer_intervals(port)]
-        if any(other[0] <= arrival < other[1] for other in intervals):
-            continue
-        end = min([full_end] + [other[0] for other in intervals
-                                if arrival < other[0] < full_end])
-        if worthwhile_charge(opportunity, end):
-            choices.append((useful_charge_time(arrival, touchdown_soc, end),
-                            (arrival, end), port))
-    return max(choices)[1:] if choices else None
-
-
 def choose_standby(position):
     occupied = {peer["standby_index"] for index, peer in enumerate(peers)
                 if index != me and peer["standby_index"] is not None and
@@ -500,9 +445,13 @@ def planned_reservation(position, candidate_path, now):
 def due_tasks(now):
     executing = {peer["active"] for index, peer in enumerate(peers)
                  if index != me and peer["active"] is not None}
+    # A task is eligible while it is no more than one service ahead of the
+    # least-served task.  Requiring exact equality with the minimum collapses
+    # the eligible set to the trailing tasks alone and leaves most of the team
+    # without work at the boundary between passes.
     fewest = min(visits)
     return [task_id for task_id, task in enumerate(TASKS)
-            if visits[task_id] <= fewest and task_id != active_task
+            if visits[task_id] <= fewest + 1 and task_id != active_task
             and task_id not in executing]
 
 
@@ -680,6 +629,16 @@ def refresh_energy_plan(position, now):
     """Keep charging need and reservation derived from the current route."""
     global reservation, reservation_path, reservation_committed
     global charge_after_bundle, changed, charger_index, reservation_floor
+    # Servicing a task consumes the leading entry of the committed route, so
+    # the remaining path is a suffix of the one the reservation was derived
+    # from.  The UAV is then executing the assignment it already won, and the
+    # reservation granted with that assignment stands; re-deriving it here
+    # would make the UAV compete for a resource it already holds.
+    if (reservation is not None and charge_after_bundle and
+            reservation_path[len(reservation_path) - len(path):]
+            == tuple(path)):
+        reservation_path = tuple(path)
+        return
     new_charge_after = bool(path) and needs_charge_after(position, path)
     preferred = (planned_reservation(position, path, now)
                  if new_charge_after else None)
@@ -1128,18 +1087,14 @@ while robot.step(dt) != -1:
         elif has_new_release(now) or newly_feasible_unowned:
             enter_auction()
         else:
-            slot = advance_charge_slot(position, now)
-            if slot is not None:
-                reservation, charger_index = slot
-                reservation_committed = reservation is not None
-                log("advance_charge_planned", now, reservation=reservation,
-                    battery_soc=battery / BATTERY_CAPACITY_J)
-                request_charger(now, position)
-            else:
-                standby_index = choose_standby(position)
-                charger_retry_pending = True
-                state = "TO_STANDBY"
-                log("standby_requested", now, standby_index=standby_index)
+            # A UAV with no task waits on the ground.  A charging resource is
+            # taken only by a UAV that can no longer service a task, which is
+            # decided above, so that idle UAVs never occupy a resource another
+            # UAV may need.
+            standby_index = choose_standby(position)
+            charger_retry_pending = True
+            state = "TO_STANDBY"
+            log("standby_requested", now, standby_index=standby_index)
     elif state == "TO_CHARGER":
         dock = charger_position()
         target = (*dock, CRUISE_ALTITUDE)
@@ -1287,19 +1242,23 @@ while robot.step(dt) != -1:
                 standby_index = None
                 state = "TAKEOFF"
         elif takeoff_for_charger:
-            if charger_retry_pending:
-                charger_retry_pending = False
-                preferred = route_metrics(position, [], now)[3]
-                earlier = feasible_reservation(
-                    position, [], now, preferred)
-                if (earlier is not None and
-                        earlier[0][0] < reservation[0] - EPSILON):
-                    reservation, charger_index = earlier
-                    ground_reservation_ready_at = (
-                        now + QUIET_ROUNDS * step_seconds)
-                    log("charger_slot_advanced", now,
-                        reservation=reservation,
-                        charger_index=charger_index)
+            # A peer that releases a reservation leaves a gap on the resource.
+            # A UAV already waiting on the ground re-checks while it waits so
+            # that the queue closes up behind the released slot.  The
+            # replacement is accepted only when it starts earlier, so the UAV
+            # never gives up the slot it holds and the check terminates.
+            charger_retry_pending = False
+            preferred = route_metrics(position, [], now)[3]
+            earlier = feasible_reservation(
+                position, [], now, preferred)
+            if (earlier is not None and
+                    earlier[0][0] < reservation[0] - EPSILON):
+                reservation, charger_index = earlier
+                ground_reservation_ready_at = (
+                    now + QUIET_ROUNDS * step_seconds)
+                log("charger_slot_advanced", now,
+                    reservation=reservation,
+                    charger_index=charger_index)
             if assigned_pad_conflict():
                 replacement = feasible_reservation(
                     position, [], now, route_metrics(position, [], now)[3])
@@ -1321,10 +1280,10 @@ while robot.step(dt) != -1:
                     state = "TAKEOFF"
         elif charger_retry_pending:
             charger_retry_pending = False
+            # Only a UAV whose charging request was deferred pursues a
+            # resource from the ground; an idle UAV simply waits.
             result = None
-            if not deferred_charge:
-                result = advance_charge_slot(position, now)
-            elif deferred_charge:
+            if deferred_charge:
                 if RESERVE_SLOTS:
                     preferred = route_metrics(position, [], now)[3]
                     if preferred is not None:
